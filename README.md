@@ -61,7 +61,7 @@
 
 ```bash
 # 1. 克隆项目
-git clone https://github.com/你的用户名/couple-cottage-community.git
+git clone https://github.com/ddzz52/DZ-Community.git
 cd couple-cottage-community/deploy
 
 # 2. 配置 API Key（可选，不配置则 AI 功能自动降级为规则模式）
