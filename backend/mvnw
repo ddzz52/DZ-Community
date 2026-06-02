@@ -1,0 +1,33 @@
+#!/bin/sh
+
+# ============================================================
+# 强制使用 JDK 1.8 编译（项目要求 Java 8）
+# ============================================================
+JDK8_HOME="/c/Program Files/Java/jdk1.8.0_152"
+if [ -d "$JDK8_HOME" ]; then
+  export JAVA_HOME="$JDK8_HOME"
+fi
+
+BASEDIR=$(cd "$(dirname "$0")"; pwd)
+WRAPPER_DIR="$BASEDIR/.mvn/wrapper"
+JAR="$WRAPPER_DIR/maven-wrapper.jar"
+PROPS="$WRAPPER_DIR/maven-wrapper.properties"
+
+if [ ! -f "$JAR" ]; then
+  echo "Maven wrapper jar not found, downloading..."
+  URL=$(grep '^wrapperUrl=' "$PROPS" | sed 's/wrapperUrl=//')
+  mkdir -p "$WRAPPER_DIR"
+  if command -v curl >/dev/null 2>&1; then
+    curl -fsSL "$URL" -o "$JAR"
+  else
+    wget -q "$URL" -O "$JAR"
+  fi
+fi
+
+JAVA_EXE="java"
+if [ -n "$JAVA_HOME" ]; then
+  JAVA_EXE="$JAVA_HOME/bin/java"
+fi
+
+exec "$JAVA_EXE" -classpath "$JAR" -Dmaven.multiModuleProjectDirectory="$BASEDIR" org.apache.maven.wrapper.MavenWrapperMain "$@"
+

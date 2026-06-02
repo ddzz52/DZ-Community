@@ -1,0 +1,57 @@
+server:
+  port: 8081
+
+spring:
+  profiles:
+    active: dev
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 30MB
+  redis:
+    host: ${REDIS_HOST:localhost}
+    port: ${REDIS_PORT:6379}
+    password: ${REDIS_PASSWORD:}
+    database: 0
+    timeout: 3000ms
+    lettuce:
+      pool:
+        max-active: 8
+        max-idle: 8
+        min-idle: 0
+
+app:
+  jwt:
+    secret: ${JWT_SECRET:dz_couple_jwt_secret_change_in_production_32bytes}
+    expire-seconds: 604800
+  crypto:
+    secret: ${CRYPTO_SECRET:dz_couple_crypto_secret_change_in_production_32bytes}
+
+mybatis:
+  configuration:
+    map-underscore-to-camel-case: true
+
+# ==================== 火山引擎 Ark API 配置 ====================
+# 文档: https://www.volcengine.com/docs/82379
+#
+# 调用豆包 API 需要 3 个参数:
+#   1. api-key    — API Key（sk- 开头），从控制台「API Key 管理」获取
+#   2. endpoint-id — 推理接入点 ID（ep- 开头），从控制台「推理接入点」获取
+#   3. model      — 模型标识，用于日志等辅助用途
+#
+# 重要: 请求体中 model 字段的值 = endpoint-id（不是 model 配置项）
+#       如果只填 api-key 不填 endpoint-id → 调用失败、不计次
+#       model 填错（如 doubao-pro-32k 这种通用名）→ 404/400，不计次
+#
+# 如何验证调用成功: 接口返回必须有 usage 字段（含 prompt_tokens、completion_tokens）
+volcengine:
+  ark:
+    api-key: ${VOLCENGINE_ARK_API_KEY:}
+    endpoint-id: ${VOLCENGINE_ARK_ENDPOINT_ID:}
+    base-url: https://ark.cn-beijing.volces.com/api/v3
+    model: doubao-pro-32k
+    timeout: 30000
+    max-retries: 2
+    enabled: true
+    temperature: 0.85
+    max-tokens: 2048

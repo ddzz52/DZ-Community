@@ -1,0 +1,229 @@
+:root {
+  --app-text: rgba(17, 24, 39, 0.92);
+  --app-muted: rgba(17, 24, 39, 0.62);
+  --app-card: rgba(255, 255, 255, 0.85);
+  --app-border: rgba(255, 255, 255, 0.7);
+  --app-shadow: 0 10px 26px rgba(17, 24, 39, 0.08);
+  --app-radius: 18px;
+  --app-max: 1120px;
+
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: var(--app-text);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+:root[data-theme='dark'] {
+  --app-text: rgba(226, 232, 240, 0.92);
+  --app-muted: rgba(226, 232, 240, 0.62);
+  --app-card: rgba(15, 23, 42, 0.66);
+  --app-border: rgba(148, 163, 184, 0.18);
+  --app-shadow: 0 18px 60px rgba(0, 0, 0, 0.38);
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-image: url('./assets/bg.svg');
+  background-size: cover;
+  background-position: center;
+  background-attachment: fixed;
+}
+
+#app {
+  min-height: 100vh;
+  position: relative;
+}
+
+#app::before {
+  content: '';
+  position: fixed;
+  inset: -20%;
+  background-image: radial-gradient(900px 520px at 12% 15%, rgba(99, 102, 241, 0.12), transparent 62%),
+    radial-gradient(820px 520px at 82% 25%, rgba(251, 191, 36, 0.10), transparent 62%),
+    radial-gradient(960px 640px at 50% 120%, rgba(139, 92, 246, 0.10), transparent 65%);
+  opacity: 0.8;
+  pointer-events: none;
+  z-index: 0;
+  transform: translate3d(0, 0, 0);
+  animation: dzBgFlow 22s ease-in-out infinite alternate;
+}
+
+#app > * {
+  position: relative;
+  z-index: 1;
+}
+
+/* ====== 全局漂浮光点 ====== */
+#app::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(3px 3px at 12% 18%, rgba(99, 102, 241, 0.2), transparent),
+    radial-gradient(2px 2px at 28% 62%, rgba(139, 92, 246, 0.18), transparent),
+    radial-gradient(2.5px 2.5px at 64% 38%, rgba(99, 102, 241, 0.15), transparent),
+    radial-gradient(2px 2px at 78% 72%, rgba(139, 92, 246, 0.17), transparent),
+    radial-gradient(1.5px 1.5px at 42% 88%, rgba(251, 191, 36, 0.19), transparent),
+    radial-gradient(2.5px 2.5px at 88% 14%, rgba(99, 102, 241, 0.14), transparent),
+    radial-gradient(2px 2px at 56% 48%, rgba(139, 92, 246, 0.16), transparent),
+    radial-gradient(1.5px 1.5px at 18% 78%, rgba(251, 191, 36, 0.15), transparent);
+  animation: particleFloat 24s ease-in-out infinite alternate;
+}
+
+@keyframes particleFloat {
+  0% {
+    opacity: 0.45;
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    opacity: 0.7;
+    transform: translate(8px, -12px) scale(1.08);
+  }
+  66% {
+    opacity: 0.5;
+    transform: translate(-6px, 6px) scale(0.94);
+  }
+  100% {
+    opacity: 0.65;
+    transform: translate(4px, -4px) scale(1.02);
+  }
+}
+
+/* ====== 全局卡片悬浮微光 ====== */
+.app-card {
+  transition: box-shadow 0.35s ease, border-color 0.35s ease, transform 0.35s ease;
+}
+@media (hover: hover) {
+  .app-card:hover {
+    border-color: rgba(99, 102, 241, 0.12);
+    box-shadow:
+      0 16px 38px rgba(99, 102, 241, 0.06),
+      0 2px 8px rgba(139, 92, 246, 0.04);
+  }
+}
+
+/* ====== 选中色 ====== */
+::selection {
+  background: rgba(251, 191, 36, 0.18);
+  color: rgba(17, 24, 39, 0.92);
+}
+
+/* ====== 滚动条 ====== */
+::-webkit-scrollbar {
+  width: 5px;
+  height: 5px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.18);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.28);
+}
+
+:root[data-theme='dark'] body {
+  background-color: #0b1020;
+  background-image: radial-gradient(1000px 600px at 15% 10%, rgba(99, 102, 241, 0.22), transparent 60%),
+    radial-gradient(900px 520px at 85% 30%, rgba(139, 92, 246, 0.2), transparent 60%),
+    radial-gradient(1000px 720px at 50% 120%, rgba(251, 191, 36, 0.10), transparent 65%);
+  background-attachment: fixed;
+}
+
+:root[data-theme='dark'] #app::before {
+  opacity: 0.55;
+  background-image: radial-gradient(1000px 620px at 18% 14%, rgba(99, 102, 241, 0.22), transparent 60%),
+    radial-gradient(920px 560px at 85% 28%, rgba(139, 92, 246, 0.22), transparent 62%),
+    radial-gradient(980px 700px at 52% 120%, rgba(251, 191, 36, 0.12), transparent 65%);
+}
+
+.app-card {
+  border-radius: var(--app-radius);
+  background: var(--app-card);
+  border: 1px solid var(--app-border);
+  box-shadow: var(--app-shadow);
+  overflow: hidden;
+}
+
+.app-muted {
+  color: var(--app-muted);
+}
+
+.app-max {
+  width: 100%;
+  max-width: var(--app-max);
+  margin: 0 auto;
+}
+
+.el-card.app-card .el-card__header {
+  padding: 14px 14px 10px;
+  border-bottom: 1px solid rgba(17, 24, 39, 0.06);
+}
+
+.el-card.app-card .el-card__body {
+  padding: 14px;
+}
+
+.dz-cardhead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.dz-cardtitle {
+  font-weight: 900;
+  letter-spacing: 0.2px;
+  font-size: 14px;
+  line-height: 1.2;
+}
+
+.dz-cardactions {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dz-soft-success.el-message {
+  background: rgba(236, 253, 245, 0.96);
+  border: 1px solid rgba(16, 185, 129, 0.22);
+  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.12);
+  backdrop-filter: blur(12px);
+}
+.dz-soft-success.el-message .el-message__content {
+  color: rgba(5, 150, 105, 0.95);
+  font-weight: 900;
+}
+.dz-soft-success.el-message .el-message__icon {
+  color: rgba(16, 185, 129, 0.9);
+}
+
+@keyframes dzBgFlow {
+  0% {
+    transform: translate3d(-2.5%, -1.5%, 0) scale(1.03);
+    filter: saturate(1) brightness(1);
+  }
+  50% {
+    transform: translate3d(1.5%, 2%, 0) scale(1.06);
+    filter: saturate(1.08) brightness(1.02);
+  }
+  100% {
+    transform: translate3d(2.5%, -1.5%, 0) scale(1.05);
+    filter: saturate(1.04) brightness(1.01);
+  }
+}
+
+/* ====== 全局心跳动效 ====== */
+@keyframes heartbeat {
+  0%, 100% { transform: scale(1); }
+  8%  { transform: scale(1.12); }
+  16% { transform: scale(1); }
+  24% { transform: scale(1.08); }
+  32% { transform: scale(1); }
+}
