@@ -1,5 +1,5 @@
 <script setup>
-import { reactive } from 'vue'
+import { reactive, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
@@ -17,9 +17,12 @@ const form = reactive({
   inviteCode: ''
 })
 
+const regOk = ref(false)
+const newInviteCode = ref('')
+
 const submit = async () => {
   try {
-    await auth.registerV2({
+    const user = await auth.registerV2({
       username: form.username,
       password: form.password,
       nickname: form.nickname,
@@ -28,11 +31,34 @@ const submit = async () => {
       avatarUrl: form.avatarUrl,
       inviteCode: form.inviteCode || undefined
     })
-    ElMessage.success('注册成功，请登录')
-    router.replace('/login')
+    if (user.inviteCode) {
+      newInviteCode.value = user.inviteCode
+      regOk.value = true
+    } else {
+      ElMessage.success('注册成功，请登录')
+      router.replace('/login')
+    }
   } catch (e) {
     ElMessage.error(e?.message || '注册失败')
   }
+}
+
+const copyCode = () => {
+  navigator.clipboard?.writeText(newInviteCode.value).then(() => {
+    ElMessage.success('已复制邀请码')
+  }).catch(() => {
+    const ta = document.createElement('textarea')
+    ta.value = newInviteCode.value
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    ElMessage.success('已复制邀请码')
+  })
+}
+
+const goLogin = () => {
+  router.replace('/login')
 }
 </script>
 
@@ -81,6 +107,21 @@ const submit = async () => {
         </el-form>
       </el-card>
     </div>
+
+    <!-- 注册成功弹窗：显示邀请码 -->
+    <el-dialog v-model="regOk" title="注册成功" width="90%" :close-on-click-modal="false" :close-on-press-escape="false">
+      <div style="text-align:center;padding:12px 0">
+        <p style="font-size:15px;font-weight:700;margin:0 0 6px">你的情侣空间邀请码</p>
+        <p style="font-size:13px;color:var(--app-muted);margin:0 0 14px">把邀请码发给你的伴侣，TA 注册时填写即可加入同一空间</p>
+        <div style="display:flex;align-items:center;justify-content:center;gap:10px">
+          <code style="font-size:28px;font-weight:950;letter-spacing:3px;padding:10px 20px;background:rgba(99,102,241,0.08);border-radius:12px;color:#6366f1">{{ newInviteCode }}</code>
+          <el-button size="small" @click="copyCode">复制</el-button>
+        </div>
+      </div>
+      <template #footer>
+        <el-button type="primary" @click="goLogin">已保存，去登录</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
