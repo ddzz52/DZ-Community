@@ -308,9 +308,13 @@ public class PeriodService {
                 }
             } catch (Exception ignore) { }
         }
+        // 计算推迟天数：预测日过了多少天
+        Integer daysDelayed = null;
         if (predictedDatePassed) {
-            // 不清除 nextStart 的原值，UI 据此判断逾期状态
+            LocalDate predictedStart = last.plusDays(cycleDays);
+            daysDelayed = (int) ChronoUnit.DAYS.between(predictedStart, today);
         }
+
         LocalDate nextEnd = nextStart.plusDays(periodDays - 1L);
         int daysToNext = (int) ChronoUnit.DAYS.between(today, nextStart);
         if (daysToNext < 0) {
@@ -320,6 +324,7 @@ public class PeriodService {
         p.setCurrentPeriodStart(currentPeriodStart.format(DTF));
         p.setCurrentPeriodEnd(currentPeriodEnd.format(DTF));
         p.setPredictedDatePassed(predictedDatePassed);
+        p.setDaysDelayed(daysDelayed);
 
         LocalDate ovulation = nextStart.minusDays(14);
         LocalDate fertileStart = ovulation.minusDays(5);

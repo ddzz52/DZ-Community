@@ -74,7 +74,13 @@ const headline = computed(() => {
   if (!phase) return null
   if (days == null) return { title: phase, sub: `第${dayNo}天` }
   if (p.predictedDatePassed) {
-    return { title: `📋 请确认经期`, sub: `第${dayNo}天 · 预测日已过，请问经期来了吗？`, needConfirm: true }
+    const delayed = typeof p.daysDelayed === 'number' ? p.daysDelayed : 0
+    return {
+      title: `📋 请确认经期`,
+      sub: `第${dayNo}天 · 经期推迟 ${delayed} 天`,
+      needConfirm: true,
+      delayed
+    }
   }
   if (days === 0) return { title: phase, sub: `第${dayNo}天 · 今天可能来潮` }
   return { title: phase, sub: `第${dayNo}天 · 距离经期约${days}日` }
@@ -477,6 +483,11 @@ const warmLine = computed(() => {
         <div class="phase-detail app-muted" v-if="phaseDetail">{{ phaseDetail }}</div>
         <div class="hint app-muted">{{ hint }}</div>
         <transition name="confirm-fade">
+          <div v-if="headline?.needConfirm" class="confirm-hint">
+            <div class="delay-card">
+              <p class="delay-text">经期推迟 {{ headline.delayed }} 天，别担心，偶尔推迟是正常的。注意休息、保持好心情，我会一直陪着你 ❤️</p>
+            </div>
+          </div>
           <div v-if="headline?.needConfirm" class="confirm-actions">
             <button
               class="confirm-btn started"
@@ -710,6 +721,19 @@ const warmLine = computed(() => {
 }
 .hint {
   margin-top: 6px;
+}
+.confirm-hint { margin-top: 8px; }
+.delay-card {
+  background: rgba(139,92,246,0.06);
+  border: 1px solid rgba(139,92,246,0.14);
+  border-radius: 12px;
+  padding: 10px 14px;
+}
+.delay-text {
+  font-size: 13px;
+  color: rgba(109,40,217,0.85);
+  margin: 0;
+  line-height: 1.6;
 }
 .confirm-actions {
   margin-top: 10px;

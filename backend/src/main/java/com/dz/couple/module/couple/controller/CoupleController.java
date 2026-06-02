@@ -43,6 +43,28 @@ public class CoupleController {
                 couple != null && couple.getInviteCode() != null ? couple.getInviteCode() : ""));
     }
 
+    /** 获取月度预算 */
+    @GetMapping("/budget")
+    public ApiResponse<Map<String, Object>> getBudget() {
+        Long coupleId = CurrentUser.getCoupleId();
+        if (coupleId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        Couple couple = coupleMapper.findById(coupleId);
+        return ApiResponse.ok(Collections.singletonMap("monthlyBudget",
+                couple != null && couple.getMonthlyBudget() != null ? couple.getMonthlyBudget() : null));
+    }
+
+    /** 设置月度预算 */
+    @PutMapping("/budget")
+    public ApiResponse<Void> setBudget(@RequestBody Map<String, Object> body) {
+        Long coupleId = CurrentUser.getCoupleId();
+        if (coupleId == null) throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        Object val = body.get("monthlyBudget");
+        java.math.BigDecimal budget = null;
+        if (val instanceof Number) budget = java.math.BigDecimal.valueOf(((Number) val).doubleValue());
+        coupleMapper.updateMonthlyBudget(coupleId, budget);
+        return ApiResponse.ok(null);
+    }
+
     /** 保存"关于我们" */
     @PutMapping("/about")
     public ApiResponse<Void> saveAbout(@RequestBody Map<String, String> body) {

@@ -25,6 +25,8 @@ public class PeriodPredictionVO {
 
     // 预测是否已过（需用户手动确认是否来潮）
     private boolean predictedDatePassed;
+    // 推迟天数（预测日已过但用户点了"还没来"，距离预测日过去的天数）
+    private Integer daysDelayed;
 
     public Integer getCycleDay() {
         return cycleDay;
@@ -136,4 +138,6 @@ public class PeriodPredictionVO {
     public void setCurrentPeriodEnd(String currentPeriodEnd) { this.currentPeriodEnd = currentPeriodEnd; }
     public boolean isPredictedDatePassed() { return predictedDatePassed; }
     public void setPredictedDatePassed(boolean predictedDatePassed) { this.predictedDatePassed = predictedDatePassed; }
+    public Integer getDaysDelayed() { return daysDelayed; }
+    public void setDaysDelayed(Integer daysDelayed) { this.daysDelayed = daysDelayed; }
 }

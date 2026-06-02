@@ -10,6 +10,8 @@ import com.dz.couple.module.account.dto.AccountVO;
 import com.dz.couple.module.account.dto.AccountYearStatsResponse;
 import com.dz.couple.module.account.entity.Account;
 import com.dz.couple.module.account.mapper.AccountMapper;
+import com.dz.couple.module.couple.entity.Couple;
+import com.dz.couple.module.couple.mapper.CoupleMapper;
 import com.dz.couple.module.user.entity.User;
 import com.dz.couple.module.user.mapper.UserMapper;
 import com.dz.couple.module.message.ws.ChatHub;
@@ -32,12 +34,14 @@ public class AccountService {
     private final AccountMapper accountMapper;
     private final UserMapper userMapper;
     private final ChatHub chatHub;
+    private final CoupleMapper coupleMapper;
 
     @Autowired
-    public AccountService(AccountMapper accountMapper, UserMapper userMapper, ChatHub chatHub) {
+    public AccountService(AccountMapper accountMapper, UserMapper userMapper, ChatHub chatHub, CoupleMapper coupleMapper) {
         this.accountMapper = accountMapper;
         this.userMapper = userMapper;
         this.chatHub = chatHub;
+        this.coupleMapper = coupleMapper;
     }
 
     public List<AccountVO> list(Long userId,
@@ -149,9 +153,17 @@ public class AccountService {
         r.setFrom(from);
         r.setTo(to);
         BigDecimal total = accountMapper.sumAmount(coupleId, from, to);
-        r.setTotalAmount(total == null ? BigDecimal.ZERO : total);
+        if (total == null) total = BigDecimal.ZERO;
+        r.setTotalAmount(total);
         r.setByCategory(accountMapper.sumByCategory(coupleId, from, to));
         r.setByUser(accountMapper.sumByUser(coupleId, from, to));
+
+        Couple couple = coupleMapper.findById(coupleId);
+        if (couple != null && couple.getMonthlyBudget() != null && couple.getMonthlyBudget().compareTo(BigDecimal.ZERO) > 0) {
+            r.setMonthlyBudget(couple.getMonthlyBudget());
+            r.setOverBudget(total.compareTo(couple.getMonthlyBudget()) > 0);
+            r.setBudgetRemaining(couple.getMonthlyBudget().subtract(total));
+        }
         return r;
     }
 

@@ -63,6 +63,15 @@ const statsLoading = ref(false)
 const hasMore = ref(false)
 const items = ref([])
 const categories = ref([])
+const budgetVal = ref('')
+const budgetEditing = ref(false)
+
+const budgetPercent = computed(() => {
+  const total = Number(monthStats.value?.totalAmount || 0)
+  const budget = Number(monthStats.value?.monthlyBudget || budgetVal.value || 0)
+  if (!budget || budget <= 0) return 0
+  return Math.min(100, Math.round((total / budget) * 100))
+})
 
 const fmtDateTime = (d) => {
   if (!d) return ''
@@ -99,6 +108,31 @@ const loadPartner = async () => {
     partner.value = p?.partner || null
   } catch (e) {
     partner.value = null
+  }
+}
+
+const loadBudget = async () => {
+  try {
+    const res = await http.get('/api/couple/budget')
+    if (res?.monthlyBudget != null) {
+      budgetVal.value = String(res.monthlyBudget)
+    }
+  } catch (e) { /* ignore */ }
+}
+
+const saveBudget = async () => {
+  try {
+    const v = parseFloat(budgetVal.value)
+    if (isNaN(v) || v <= 0) {
+      ElMessage.error('请输入有效的预算金额')
+      return
+    }
+    await http.put('/api/couple/budget', { monthlyBudget: v })
+    budgetEditing.value = false
+    ElMessage.success('预算已保存')
+    await loadStats()
+  } catch (e) {
+    ElMessage.error(e?.message || '保存失败')
   }
 }
 
@@ -187,6 +221,7 @@ const refreshAll = async (silent) => {
   await loadPartner()
   await loadCategories()
   await loadStats()
+  await loadBudget()
   await loadList(silent)
 }
 
@@ -366,6 +401,9 @@ const grouped = computed(() => {
           <el-button size="small" :loading="loading || statsLoading" @click="refreshAll()">
             <span>刷新</span>
           </el-button>
+          <el-button size="small" @click="budgetEditing = !budgetEditing">
+            <span>{{ budgetEditing ? '取消' : '预算' }}</span>
+          </el-button>
           <el-button size="small" type="primary" @click="openAdd">
             <span>新增</span>
           </el-button>
@@ -373,11 +411,30 @@ const grouped = computed(() => {
       </div>
     </template>
 
+    <div v-if="budgetEditing" class="budget-editor app-card">
+      <span class="budget-edit-label">月度预算</span>
+      <el-input v-model="budgetVal" placeholder="例如 2000" size="small" style="width:140px;margin:0 10px" @keydown.enter="saveBudget" />
+      <el-button size="small" type="primary" @click="saveBudget">保存</el-button>
+    </div>
+
     <div class="stats">
       <div v-if="mode === 'month'" class="statbox">
         <div class="kpi">
           <div class="kpi-title">本月总支出</div>
           <div class="kpi-value">¥ {{ money(monthStats?.totalAmount) }}</div>
+        </div>
+        <div v-if="monthStats?.monthlyBudget || budgetVal" class="budget-bar-wrap">
+          <div class="budget-bar-top">
+            <span class="budget-label">预算 ¥{{ money(monthStats?.monthlyBudget || budgetVal) }}</span>
+            <span v-if="monthStats?.budgetRemaining != null" class="budget-label" :class="{ over: monthStats?.overBudget }">
+              {{ monthStats?.overBudget ? '已超支' : '剩余 ¥' + money(monthStats?.budgetRemaining) }}
+            </span>
+          </div>
+          <div class="budget-track">
+            <div class="budget-fill" :class="{ over: monthStats?.overBudget }"
+              :style="{ width: budgetPercent + '%' }" />
+          </div>
+          <div v-if="monthStats?.overBudget" class="budget-alert">⚠️ 本月支出已超出预算，请注意控制消费哦</div>
         </div>
         <div class="mini">
           <div class="mini-title">按分类</div>
@@ -535,6 +592,18 @@ const grouped = computed(() => {
 .cat {
   width: 160px;
 }
+.budget-editor {
+  display: flex; align-items: center; padding: 8px 12px; margin-bottom: 10px;
+}
+.budget-edit-label { font-size:13px; font-weight:700; white-space:nowrap; }
+.budget-bar-wrap { margin-top: 10px; }
+.budget-bar-top { display:flex; justify-content:space-between; margin-bottom:4px; }
+.budget-label { font-size:12px; font-weight:700; color:var(--app-muted); }
+.budget-label.over { color:#e11d48; }
+.budget-track { height:6px; border-radius:3px; background:rgba(99,102,241,0.1); overflow:hidden; }
+.budget-fill { height:100%; border-radius:3px; background:linear-gradient(90deg, #6366f1, #818cf8); transition:width .4s; }
+.budget-fill.over { background:linear-gradient(90deg, #e11d48, #f43f5e); }
+.budget-alert { margin-top:6px; font-size:12px; font-weight:700; color:#e11d48; }
 .stats {
   margin-bottom: 14px;
 }

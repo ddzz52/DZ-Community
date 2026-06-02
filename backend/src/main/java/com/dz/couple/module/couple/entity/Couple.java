@@ -7,6 +7,7 @@ public class Couple {
     private String signature;
     private String aboutText;
     private String inviteCode;
+    private java.math.BigDecimal monthlyBudget;
     private Date createdAt;
     private Date updatedAt;
 
@@ -21,6 +22,9 @@ public class Couple {
 
     public String getInviteCode() { return inviteCode; }
     public void setInviteCode(String inviteCode) { this.inviteCode = inviteCode; }
+
+    public java.math.BigDecimal getMonthlyBudget() { return monthlyBudget; }
+    public void setMonthlyBudget(java.math.BigDecimal monthlyBudget) { this.monthlyBudget = monthlyBudget; }
 
     public Date getCreatedAt() { return createdAt; }
     public void setCreatedAt(Date createdAt) { this.createdAt = createdAt; }

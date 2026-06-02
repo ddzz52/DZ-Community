@@ -10,6 +10,9 @@ public class AccountMonthStatsResponse {
     private Date from;
     private Date to;
     private BigDecimal totalAmount;
+    private BigDecimal monthlyBudget;
+    private Boolean overBudget;
+    private BigDecimal budgetRemaining;
     private List<CategoryItem> byCategory;
     private List<UserItem> byUser;
 
@@ -110,5 +113,12 @@ public class AccountMonthStatsResponse {
     public void setByUser(List<UserItem> byUser) {
         this.byUser = byUser;
     }
+
+    public BigDecimal getMonthlyBudget() { return monthlyBudget; }
+    public void setMonthlyBudget(BigDecimal monthlyBudget) { this.monthlyBudget = monthlyBudget; }
+    public Boolean getOverBudget() { return overBudget; }
+    public void setOverBudget(Boolean overBudget) { this.overBudget = overBudget; }
+    public BigDecimal getBudgetRemaining() { return budgetRemaining; }
+    public void setBudgetRemaining(BigDecimal budgetRemaining) { this.budgetRemaining = budgetRemaining; }
 }
 

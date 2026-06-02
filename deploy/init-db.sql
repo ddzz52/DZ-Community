@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS t_couple (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
   signature VARCHAR(50) NULL,
   about_text TEXT NULL COMMENT '关于我们',
+  monthly_budget DECIMAL(10,2) NULL COMMENT '月度预算',
   invite_code VARCHAR(32) NULL COMMENT '邀请码',
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
