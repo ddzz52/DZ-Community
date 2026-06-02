@@ -34,24 +34,56 @@ command -v "docker compose" >/dev/null 2>&1 || {
 }
 log "Docker 就绪"
 
-# ===== 2. 生成 .env =====
-log "准备环境配置..."
+# ===== 2. 交互式配置 API Key =====
+log "配置 AI API Key..."
 cd "$SCRIPT_DIR"
 
-if [ ! -f .env ]; then
-  DB_ROOT_PASSWORD=$(openssl rand -base64 24 2>/dev/null || cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32)
-  JWT_SECRET=$(openssl rand -base64 48 2>/dev/null || cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
-  CRYPTO_SECRET=$(openssl rand -base64 48 2>/dev/null || cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+ARK_KEY=""; ARK_EP=""
 
-  # 从 .env.example 读取 API Key
-  ARK_KEY=""; ARK_EP=""
-  if [ -f .env.example ]; then
-    ARK_KEY=$(grep 'VOLCENGINE_ARK_API_KEY' .env.example | cut -d= -f2-)
-    ARK_EP=$(grep 'VOLCENGINE_ARK_ENDPOINT_ID' .env.example | cut -d= -f2-)
+# 从已有 .env 或 .env.example 读取
+if [ -f .env ]; then
+  source .env 2>/dev/null || true
+  ARK_KEY="$VOLCENGINE_ARK_API_KEY"
+  ARK_EP="$VOLCENGINE_ARK_ENDPOINT_ID"
+elif [ -f .env.example ]; then
+  ARK_KEY=$(grep 'VOLCENGINE_ARK_API_KEY' .env.example | cut -d= -f2-)
+  ARK_EP=$(grep 'VOLCENGINE_ARK_ENDPOINT_ID' .env.example | cut -d= -f2-)
+fi
+
+# 如果 API Key 是占位符或为空，提示输入
+NEED_KEY=false
+case "$ARK_KEY" in
+  ""|"your-ark-api-key-here"|"sk-your-api-key-here"|"your-api-key-here") NEED_KEY=true ;;
+esac
+
+if $NEED_KEY; then
+  echo ""
+  echo "  需要火山引擎 Ark API Key 才能使用 AI 智能管家功能。"
+  echo "  从 https://console.volcengine.com/ark 获取，格式为 ark- 开头。"
+  echo "  如果暂不配置，直接回车跳过（AI 功能自动降级为规则模式）。"
+  echo ""
+  read -p "  API Key: " ARK_KEY
+  if [ -n "$ARK_KEY" ]; then
+    read -p "  Endpoint ID (ep-开头): " ARK_EP
+    log "AI API Key 已配置"
+  else
+    warn "跳过 AI 配置（其他功能正常使用）"
+    ARK_KEY=""
+    ARK_EP=""
   fi
+else
+  log "API Key 已配置"
+fi
 
-  cat > .env << ENVEOF
-# 双人情侣小屋 — 环境变量（自动生成）
+# ===== 3. 生成 .env =====
+log "生成安全密钥..."
+
+DB_ROOT_PASSWORD=$(openssl rand -base64 24 2>/dev/null || cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 32)
+JWT_SECRET=$(openssl rand -base64 48 2>/dev/null || cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+CRYPTO_SECRET=$(openssl rand -base64 48 2>/dev/null || cat /dev/urandom | tr -dc 'a-zA-Z0-9' | head -c 64)
+
+cat > .env << ENVEOF
+# 双人情侣小屋 — 环境变量（自动生成 $(date '+%Y-%m-%d %H:%M')）
 DB_ROOT_PASSWORD=${DB_ROOT_PASSWORD}
 DB_NAME=couple
 JWT_SECRET=${JWT_SECRET}
@@ -60,19 +92,9 @@ VOLCENGINE_ARK_API_KEY=${ARK_KEY}
 VOLCENGINE_ARK_ENDPOINT_ID=${ARK_EP}
 COMPOSE_FILE=docker-compose.http.yml
 ENVEOF
-  log ".env 已自动生成（密钥随机生成，API Key 从 .env.example 读取）"
-else
-  log ".env 已存在，跳过"
-fi
+log ".env 已生成（密钥随机生成）"
 
-# 备份 .env 到上级目录防止丢失
 cp .env "$PROJECT_DIR/.env.deploy.bak" 2>/dev/null || true
-
-# ===== 3. API Key 检查 =====
-source .env 2>/dev/null || true
-if [ -z "$VOLCENGINE_ARK_API_KEY" ]; then
-  warn "未配置 AI API Key，AI 智能管家功能将不可用（其他功能正常）"
-fi
 
 # ===== 4. 构建前端 =====
 log "构建前端..."
