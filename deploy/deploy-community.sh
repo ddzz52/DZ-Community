@@ -28,7 +28,7 @@ command -v docker >/dev/null 2>&1 || {
 DOCKER_COMPOSE="docker compose"
 command -v "docker compose" >/dev/null 2>&1 || {
   command -v docker-compose >/dev/null 2>&1 && DOCKER_COMPOSE="docker-compose" || {
-    echo "请先安装 Docker Compose"
+    echo "请先安装 Docker Compose: apt-get install -y docker-compose-plugin"
     exit 1
   }
 }
@@ -45,6 +45,11 @@ if [ -f .env ]; then
   source .env 2>/dev/null || true
   ARK_KEY="$VOLCENGINE_ARK_API_KEY"
   ARK_EP="$VOLCENGINE_ARK_ENDPOINT_ID"
+  # 旧版 .env 可能缺少字段，自动升级
+  if [ -z "$CRYPTO_SECRET" ] || [ -z "$COMPOSE_FILE" ]; then
+    log "检测到旧版 .env，自动升级..."
+    rm -f .env
+  fi
 elif [ -f .env.example ]; then
   ARK_KEY=$(grep 'VOLCENGINE_ARK_API_KEY' .env.example | cut -d= -f2-)
   ARK_EP=$(grep 'VOLCENGINE_ARK_ENDPOINT_ID' .env.example | cut -d= -f2-)
@@ -114,7 +119,7 @@ fi
 log "构建后端 Docker 镜像..."
 cd "$SCRIPT_DIR"
 COMPOSE_FILE="${COMPOSE_FILE:-docker-compose.http.yml}"
-$DOCKER_COMPOSE -f "$COMPOSE_FILE" build backend --quiet
+$DOCKER_COMPOSE -f "$COMPOSE_FILE" build backend
 log "后端镜像构建完成"
 
 # ===== 6. 启动服务 =====
