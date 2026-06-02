@@ -25,6 +25,7 @@ const nowTick = ref(Date.now())
 let sigTickTimer = 0
 const headIn = ref(false)
 const inviteCode = ref('')
+const inviteDialog = ref(false)
 
 const theme = ref('light')
 const applyTheme = () => {
@@ -591,12 +592,6 @@ onBeforeUnmount(() => {
       </div>
     </div>
 
-    <div v-if="inviteCode" class="invitebar app-card">
-      <div class="invite-label">邀请码</div>
-      <code class="invite-code">{{ inviteCode }}</code>
-      <el-button size="small" @click="copyInviteCode">复制</el-button>
-    </div>
-
     <div class="statcards" :class="{ in: headIn }">
       <div
         class="statcard"
@@ -695,6 +690,28 @@ onBeforeUnmount(() => {
               <span class="arr">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
+                </svg>
+              </span>
+            </div>
+          </button>
+
+          <button v-if="inviteCode" class="setrow" type="button" @click="inviteDialog = true">
+            <div class="setleft">
+              <div class="seticon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M8 7V6.2C8 4.985 8.985 4 10.2 4h5.6C17.015 4 18 4.985 18 6.2v11.6c0 1.215-.985 2.2-2.2 2.2h-5.6c-1.215 0-2.2-.985-2.2-2.2V17" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                  <path d="M12 17v-5M12 9.5V8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                </svg>
+              </div>
+              <div class="settexts">
+                <div class="setname">邀请码</div>
+                <div class="setdesc app-muted">分享邀请码让伴侣加入你的空间</div>
+              </div>
+            </div>
+            <div class="setright" aria-hidden="true">
+              <span class="arr">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </span>
             </div>
@@ -1103,6 +1120,17 @@ onBeforeUnmount(() => {
       <el-button type="primary" @click="savePwd">保存</el-button>
     </template>
   </el-dialog>
+
+  <el-dialog v-model="inviteDialog" title="情侣空间邀请码" width="92%">
+    <div style="text-align:center;padding:8px 0">
+      <p style="font-size:14px;color:var(--app-muted);margin:0 0 16px">把邀请码发给你的伴侣，TA 注册时填写即可加入同一空间</p>
+      <code style="font-size:32px;font-weight:950;letter-spacing:4px;padding:12px 24px;background:rgba(99,102,241,0.08);border-radius:14px;color:#6366f1;display:inline-block;margin-bottom:16px">{{ inviteCode }}</code>
+    </div>
+    <template #footer>
+      <el-button @click="inviteDialog = false">关闭</el-button>
+      <el-button type="primary" @click="copyInviteCode">复制邀请码</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>
@@ -1407,29 +1435,6 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-}
-.invitebar {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 12px;
-  padding: 14px 16px;
-  margin-top: 14px;
-}
-.invite-label {
-  font-size: 13px;
-  font-weight: 800;
-  color: var(--app-muted);
-}
-.invite-code {
-  font-size: 20px;
-  font-weight: 950;
-  letter-spacing: 3px;
-  background: rgba(99,102,241,0.08);
-  color: #6366f1;
-  padding: 6px 16px;
-  border-radius: 10px;
-  font-family: monospace;
 }
 .statcards {
   display: grid;
