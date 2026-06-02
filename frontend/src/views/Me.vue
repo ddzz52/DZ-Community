@@ -24,6 +24,7 @@ const loading = ref(false)
 const nowTick = ref(Date.now())
 let sigTickTimer = 0
 const headIn = ref(false)
+const inviteCode = ref('')
 
 const theme = ref('light')
 const applyTheme = () => {
@@ -152,8 +153,30 @@ const finishEditAbout = () => {
 
 // IntersectionObserver: 滚动到可见区域时触发淡入
 let aboutObserver = null
+const loadInviteCode = async () => {
+  try {
+    const data = await http.get('/api/couple/invite-code')
+    inviteCode.value = data?.inviteCode || ''
+  } catch (e) { /* ignore */ }
+}
+
+const copyInviteCode = () => {
+  navigator.clipboard?.writeText(inviteCode.value).then(() => {
+    ElMessage.success('已复制邀请码')
+  }).catch(() => {
+    const ta = document.createElement('textarea')
+    ta.value = inviteCode.value
+    document.body.appendChild(ta)
+    ta.select()
+    document.execCommand('copy')
+    document.body.removeChild(ta)
+    ElMessage.success('已复制邀请码')
+  })
+}
+
 onMounted(() => {
   loadAbout()
+  loadInviteCode()
   if (aboutEl.value) {
     aboutObserver = new IntersectionObserver(
       ([entry]) => {
@@ -566,6 +589,12 @@ onBeforeUnmount(() => {
           </div>
         </div>
       </div>
+    </div>
+
+    <div v-if="inviteCode" class="invitebar app-card">
+      <div class="invite-label">邀请码</div>
+      <code class="invite-code">{{ inviteCode }}</code>
+      <el-button size="small" @click="copyInviteCode">复制</el-button>
     </div>
 
     <div class="statcards" :class="{ in: headIn }">
@@ -1378,6 +1407,29 @@ onBeforeUnmount(() => {
   display: inline-flex;
   align-items: center;
   gap: 6px;
+}
+.invitebar {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 14px 16px;
+  margin-top: 14px;
+}
+.invite-label {
+  font-size: 13px;
+  font-weight: 800;
+  color: var(--app-muted);
+}
+.invite-code {
+  font-size: 20px;
+  font-weight: 950;
+  letter-spacing: 3px;
+  background: rgba(99,102,241,0.08);
+  color: #6366f1;
+  padding: 6px 16px;
+  border-radius: 10px;
+  font-family: monospace;
 }
 .statcards {
   display: grid;
