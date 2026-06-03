@@ -75,9 +75,17 @@ public class DashboardService {
 
     private String pickQuote() {
         List<String> quotes = Arrays.asList(
-                "把今天过成我们喜欢的样子", "记录会让幸福更具体", "愿你们的日常都闪着光",
-                "今天也一起加油", "执子之手，与子偕老", "小小的偏爱，刚刚好",
-                "山有木兮木有枝，心悦君兮君不知"
+                "把今天过成我们喜欢的样子",
+                "记录会让幸福更具体",
+                "愿你们的日常都闪着光",
+                "今天也一起加油",
+                "不畏浮云遮望眼，只缘身在最高层",
+                "静以修身，俭以养德",
+                "执子之手，与子偕老",
+                "山有木兮木有枝，心悦君兮君不知",
+                "If I know what love is, it is because of you",
+                "Love looks not with the eyes, but with the mind",
+                "小小的偏爱，刚刚好"
         );
         int idx = (int) (System.currentTimeMillis() % quotes.size());
         return quotes.get(idx);
