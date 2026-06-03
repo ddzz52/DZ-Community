@@ -177,14 +177,12 @@ onBeforeUnmount(() => {
             </div>
             <div class="input-group flex-1">
               <label class="input-label">相恋日期 <span class="required">*</span></label>
-              <div class="input-wrap">
+              <div class="input-wrap picker-wrap">
                 <el-date-picker
                   v-model="form.loveDate"
                   type="date"
                   placeholder="选择日期"
                   class="inline-picker"
-                  :teleported="false"
-                  popper-class="reg-popper"
                 />
                 <span class="input-border" />
               </div>
@@ -195,13 +193,11 @@ onBeforeUnmount(() => {
           <div class="input-row">
             <div class="input-group flex-1">
               <label class="input-label">性别</label>
-              <div class="input-wrap">
+              <div class="input-wrap picker-wrap">
                 <el-select
                   v-model="form.gender"
                   placeholder="不填"
                   class="inline-select"
-                  :teleported="false"
-                  popper-class="reg-popper"
                 >
                   <el-option :value="1" label="男" />
                   <el-option :value="2" label="女" />
@@ -468,6 +464,7 @@ onBeforeUnmount(() => {
   border: 1.5px solid rgba(209, 213, 219, 0.45);
   transition: all 0.28s ease; overflow: hidden;
 }
+.picker-wrap { overflow: visible; }
 .input-wrap:focus-within {
   background: rgba(255, 255, 255, 0.85);
   border-color: rgba(16, 185, 129, 0.45);
