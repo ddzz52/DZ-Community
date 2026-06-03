@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -50,7 +51,7 @@ public class CacheService {
     public void deletePattern(String pattern) {
         if (redis == null) return;
         try {
-            var keys = redis.keys(pattern);
+            Set<String> keys = redis.keys(pattern);
             if (keys != null && !keys.isEmpty()) redis.delete(keys);
         } catch (Exception e) { /* ignore */ }
     }
