@@ -6,6 +6,7 @@ public enum ErrorCode {
     FORBIDDEN(40300, "无权限"),
     NOT_FOUND(40400, "资源不存在"),
     CONFLICT(40900, "资源冲突"),
+    PRECONDITION_FAILED(41200, "前置条件不满足"),
     INTERNAL_ERROR(50000, "服务异常");
 
     private final int code;
@@ -24,4 +25,3 @@ public enum ErrorCode {
         return message;
     }
 }
-

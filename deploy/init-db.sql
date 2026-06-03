@@ -7,10 +7,10 @@ CREATE TABLE IF NOT EXISTS t_couple (
   signature VARCHAR(50) NULL,
   about_text TEXT NULL COMMENT '关于我们',
   monthly_budget DECIMAL(10,2) NULL COMMENT '月度预算',
-  invite_code VARCHAR(32) NULL COMMENT '邀请码',
+  invite_code VARCHAR(8) NULL COMMENT '邀请码',
   created_at DATETIME NOT NULL,
   updated_at DATETIME NOT NULL,
-  INDEX idx_couple_invite_code (invite_code)
+  UNIQUE INDEX uk_couple_invite_code (invite_code)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE TABLE IF NOT EXISTS t_user (
@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS t_user (
   nickname VARCHAR(32) NOT NULL,
   avatar_url VARCHAR(255) NULL,
   gender TINYINT NULL,
+  role VARCHAR(16) NOT NULL DEFAULT 'USER' COMMENT '角色: ADMIN/USER',
   love_date DATE NULL,
   zodiac VARCHAR(20) DEFAULT NULL COMMENT '星座',
   signature VARCHAR(50) NULL,
@@ -31,6 +32,7 @@ CREATE TABLE IF NOT EXISTS t_user (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 CREATE INDEX idx_user_couple_id ON t_user(couple_id);
+CREATE INDEX idx_user_role ON t_user(role);
 
 CREATE TABLE IF NOT EXISTS t_anniversary (
   id BIGINT PRIMARY KEY AUTO_INCREMENT,
@@ -332,3 +334,122 @@ CREATE TABLE IF NOT EXISTS t_memo (
 
 CREATE INDEX idx_memo_couple_status_updated ON t_memo(couple_id, status, updated_at, id);
 CREATE INDEX idx_memo_couple_category_status_updated ON t_memo(couple_id, category_id, status, updated_at, id);
+
+-- ==================== 心愿刮刮卡 ====================
+CREATE TABLE IF NOT EXISTS t_wish_scratch_card (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  couple_id BIGINT NOT NULL,
+  content VARCHAR(50) NOT NULL COMMENT '心愿内容',
+  status TINYINT NOT NULL DEFAULT 0 COMMENT '0=未刮 1=已刮',
+  reveal_mode TINYINT NOT NULL DEFAULT 0 COMMENT '0=即刮即看 1=双人都刮才显示',
+  created_by BIGINT NOT NULL,
+  created_at DATETIME NOT NULL,
+  scratched_by BIGINT NULL COMMENT '单人模式/双人都刮后的刮开者',
+  scratched_at DATETIME NULL,
+  scratched_by_1 BIGINT NULL COMMENT '双人模式第一人',
+  scratched_at_1 DATETIME NULL,
+  scratched_by_2 BIGINT NULL COMMENT '双人模式第二人',
+  scratched_at_2 DATETIME NULL,
+  INDEX idx_wish_scratch_couple_status (couple_id, status),
+  INDEX idx_wish_scratch_couple_created (couple_id, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ==================== 心愿清单 ====================
+CREATE TABLE IF NOT EXISTS t_wish_item (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  couple_id BIGINT NOT NULL,
+  content VARCHAR(200) NOT NULL COMMENT '心愿内容',
+  expected_at VARCHAR(50) NULL COMMENT '期望时间（自由文本）',
+  priority INT NOT NULL DEFAULT 0 COMMENT '优先级 0=普通 1=重要 2=紧急',
+  remark VARCHAR(500) NULL COMMENT '备注',
+  status TINYINT NOT NULL DEFAULT 0 COMMENT '0=待完成 1=已完成 2=已取消',
+  created_by BIGINT NOT NULL,
+  created_at DATETIME NOT NULL,
+  updated_by BIGINT NULL,
+  updated_at DATETIME NULL,
+  completed_at DATETIME NULL,
+  canceled_at DATETIME NULL,
+  source_type VARCHAR(20) NULL COMMENT '来源类型（scratch_card等）',
+  source_id BIGINT NULL COMMENT '来源ID',
+  INDEX idx_wish_item_couple_status (couple_id, status),
+  INDEX idx_wish_item_couple_priority (couple_id, priority, expected_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ==================== AI管家 - 交互记录 ====================
+CREATE TABLE IF NOT EXISTS agent_interaction (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  couple_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  interaction_type VARCHAR(20) NULL COMMENT '消息类型: TEXT/AUDIO',
+  intent VARCHAR(50) NULL COMMENT '识别出的意图',
+  user_message TEXT NULL COMMENT '用户消息',
+  agent_response TEXT NULL COMMENT 'AI回复',
+  tools_used VARCHAR(500) NULL COMMENT '使用的工具（JSON）',
+  emotion_score DOUBLE NULL COMMENT '情感评分 0-1',
+  created_at DATETIME NOT NULL,
+  INDEX idx_agent_interaction_couple (couple_id, created_at),
+  INDEX idx_agent_interaction_user (user_id, created_at),
+  INDEX idx_agent_interaction_type (couple_id, interaction_type, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ==================== AI管家 - 意图识别日志 ====================
+CREATE TABLE IF NOT EXISTS agent_intent_log (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  couple_id BIGINT NOT NULL,
+  user_id BIGINT NOT NULL,
+  message VARCHAR(500) NULL COMMENT '用户消息摘要',
+  recognized_intent VARCHAR(50) NULL COMMENT '识别的意图',
+  params_json TEXT NULL COMMENT '提取的参数（JSON）',
+  confidence DOUBLE NULL COMMENT '置信度 0-1',
+  source VARCHAR(20) NULL COMMENT '识别来源: LLM/RULE/CACHE',
+  latency_ms BIGINT NULL COMMENT '识别耗时（毫秒）',
+  created_at DATETIME NOT NULL,
+  INDEX idx_agent_intent_log_couple (couple_id, created_at),
+  INDEX idx_agent_intent_log_source (source, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ==================== AI管家 - 核心记忆（长期） ====================
+CREATE TABLE IF NOT EXISTS agent_core_memory (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  couple_id BIGINT NOT NULL,
+  memory_type VARCHAR(30) NOT NULL COMMENT '类型: BASIC_INFO/PREFERENCE/CUSTOM',
+  memory_key VARCHAR(100) NOT NULL COMMENT '键: love_date/nickname等',
+  memory_value TEXT NULL COMMENT '值',
+  importance INT NOT NULL DEFAULT 3 COMMENT '重要程度 1-5',
+  source VARCHAR(30) NULL COMMENT '来源: USER_INPUT/SYSTEM_SYNC/AI_EXTRACT',
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  INDEX idx_agent_core_mem_couple (couple_id, memory_type),
+  UNIQUE INDEX uk_agent_core_mem_key (couple_id, memory_type, memory_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ==================== AI管家 - 场景记忆（中期，30天有效） ====================
+CREATE TABLE IF NOT EXISTS agent_scene_memory (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  couple_id BIGINT NOT NULL,
+  user_id BIGINT NULL,
+  memory_type VARCHAR(30) NOT NULL COMMENT '类型: DIALOGUE/ACTION/TEMP_PREFERENCE',
+  content TEXT NULL COMMENT '内容摘要',
+  raw_data TEXT NULL COMMENT '原始数据（JSON）',
+  related_intent VARCHAR(50) NULL COMMENT '关联意图',
+  importance INT NOT NULL DEFAULT 1 COMMENT '重要程度 1-5',
+  expire_at DATETIME NULL COMMENT '过期时间',
+  created_at DATETIME NOT NULL,
+  INDEX idx_agent_scene_mem_couple (couple_id, memory_type, expire_at),
+  INDEX idx_agent_scene_mem_expire (expire_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ==================== AI管家 - 通用记忆（支持过期） ====================
+CREATE TABLE IF NOT EXISTS agent_memory (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  couple_id BIGINT NOT NULL,
+  memory_type VARCHAR(30) NOT NULL COMMENT '类型',
+  memory_key VARCHAR(100) NOT NULL COMMENT '键',
+  memory_value TEXT NULL COMMENT '值',
+  importance INT NOT NULL DEFAULT 3 COMMENT '重要程度 1-5',
+  expire_at DATETIME NULL COMMENT '过期时间',
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  INDEX idx_agent_mem_couple (couple_id, memory_type),
+  UNIQUE INDEX uk_agent_mem_key (couple_id, memory_type, memory_key)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

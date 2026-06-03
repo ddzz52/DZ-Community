@@ -20,7 +20,8 @@ const routes = [
       { path: 'albums', component: () => import('../views/Albums.vue') },
       { path: 'notifications', component: () => import('../views/Notifications.vue') },
       { path: 'partner', component: () => import('../views/Partner.vue') },
-      { path: 'me', component: () => import('../views/Me.vue') }
+      { path: 'me', component: () => import('../views/Me.vue') },
+      { path: 'admin', component: () => import('../views/Admin.vue'), meta: { requiresAuth: true, requiresAdmin: true } }
     ]
   },
   { path: '/:pathMatch(.*)*', redirect: '/app/home' }
@@ -39,6 +40,11 @@ router.beforeEach(async (to) => {
   const requiresAuth = to.matched.some((r) => r.meta.requiresAuth)
   if (requiresAuth && !auth.token) {
     return { path: '/login', query: { redirect: to.fullPath } }
+  }
+  // 管理员页面权限检查
+  const requiresAdmin = to.matched.some((r) => r.meta.requiresAdmin)
+  if (requiresAdmin && auth.user?.role !== 'ADMIN') {
+    return { path: '/app/me' }
   }
   if ((to.path === '/login' || to.path === '/register') && auth.token) {
     return { path: '/app/home' }

@@ -6,6 +6,7 @@ import com.dz.couple.module.anniversary.mapper.AnniversaryMapper;
 import com.dz.couple.module.couple.entity.Couple;
 import com.dz.couple.module.couple.mapper.CoupleMapper;
 import com.dz.couple.module.diary.mapper.DiaryMapper;
+import com.dz.couple.module.message.ws.ChatHub;
 import com.dz.couple.module.notification.NotificationTypes;
 import com.dz.couple.module.notification.service.NotificationService;
 import com.dz.couple.module.photo.mapper.PhotoMapper;
@@ -43,9 +44,10 @@ public class ProfileService {
     private final PasswordUtil passwordUtil;
     private final UserSettingsMapper userSettingsMapper;
     private final NotificationService notificationService;
+    private final ChatHub chatHub;
 
     @Autowired
-    public ProfileService(UserMapper userMapper, CoupleMapper coupleMapper, AnniversaryMapper anniversaryMapper, DiaryMapper diaryMapper, PhotoMapper photoMapper, PasswordUtil passwordUtil, UserSettingsMapper userSettingsMapper, NotificationService notificationService) {
+    public ProfileService(UserMapper userMapper, CoupleMapper coupleMapper, AnniversaryMapper anniversaryMapper, DiaryMapper diaryMapper, PhotoMapper photoMapper, PasswordUtil passwordUtil, UserSettingsMapper userSettingsMapper, NotificationService notificationService, ChatHub chatHub) {
         this.userMapper = userMapper;
         this.coupleMapper = coupleMapper;
         this.anniversaryMapper = anniversaryMapper;
@@ -54,6 +56,7 @@ public class ProfileService {
         this.passwordUtil = passwordUtil;
         this.userSettingsMapper = userSettingsMapper;
         this.notificationService = notificationService;
+        this.chatHub = chatHub;
     }
 
     public ProfileResponse getProfile(Long userId, Long coupleId) {
@@ -87,6 +90,8 @@ public class ProfileService {
         resp.setStats(stats);
         resp.setMe(toVO(me));
         resp.setPartner(partner == null ? null : toVO(partner));
+        // 在线状态：通过 WebSocket ChatHub 判断
+        resp.setPartnerOnline(partner != null && chatHub.hasOnline(partner.getId()));
         return resp;
     }
 
@@ -339,6 +344,7 @@ public class ProfileService {
         vo.setNickname(user.getNickname());
         vo.setAvatarUrl(user.getAvatarUrl());
         vo.setGender(user.getGender());
+        vo.setRole(user.getRole());
         vo.setLoveDate(user.getLoveDate());
         vo.setZodiac(user.getZodiac());
         vo.setSignature(user.getSignature());

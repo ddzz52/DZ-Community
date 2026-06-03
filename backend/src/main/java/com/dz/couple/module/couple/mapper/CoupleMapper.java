@@ -26,10 +26,9 @@ public interface CoupleMapper {
     @Select("select id, signature, about_text as aboutText, invite_code as inviteCode, monthly_budget as monthlyBudget, created_at as createdAt, updated_at as updatedAt from t_couple where invite_code = #{code} limit 1")
     Couple findByInviteCode(@Param("code") String code);
 
-    @Select("select c.id, c.signature, c.about_text as aboutText, c.invite_code as inviteCode, c.monthly_budget as monthlyBudget, c.created_at as createdAt, c.updated_at as updatedAt " +
-            "from t_couple c left join t_user u on u.couple_id = c.id " +
-            "group by c.id having count(u.id) < 2 order by c.id asc limit 1")
-    Couple findAvailable();
+    /** 删除情侣空间（清理孤立的旧空间） */
+    @Update("delete from t_couple where id = #{id}")
+    int deleteById(@Param("id") Long id);
 
     @Update("update t_couple set monthly_budget = #{budget}, updated_at = now() where id = #{id}")
     int updateMonthlyBudget(@Param("id") Long id, @Param("budget") java.math.BigDecimal budget);

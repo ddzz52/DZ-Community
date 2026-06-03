@@ -9,6 +9,7 @@ public class ProfileResponse {
     private Stats stats;
     private UserVO me;
     private UserVO partner;
+    private Boolean partnerOnline;
 
     public String getSignature() {
         return signature;
@@ -56,6 +57,14 @@ public class ProfileResponse {
 
     public void setPartner(UserVO partner) {
         this.partner = partner;
+    }
+
+    public Boolean getPartnerOnline() {
+        return partnerOnline;
+    }
+
+    public void setPartnerOnline(Boolean partnerOnline) {
+        this.partnerOnline = partnerOnline;
     }
 
     public static class Stats {

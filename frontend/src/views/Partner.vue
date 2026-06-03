@@ -8,6 +8,7 @@ import { ArrowLeft, RefreshRight, UserFilled } from '@element-plus/icons-vue'
 const router = useRouter()
 const loading = ref(false)
 const partner = ref(null)
+const partnerOnline = ref(false)
 
 const initialFor = (u) => {
   const n = u?.nickname || u?.username || ''
@@ -33,6 +34,7 @@ const refresh = async (silent) => {
     loading.value = true
     const data = await http.get('/api/profile')
     partner.value = data?.partner || null
+    partnerOnline.value = !!data?.partnerOnline
     if (!silent) ElMessage.success('已刷新')
   } catch (e) {
     if (!silent) ElMessage.error(e?.message || '刷新失败')
@@ -59,10 +61,14 @@ onMounted(() => refresh(true))
       <div class="row">
         <div class="avatar">
           <span>{{ initialFor(partner) }}</span>
+          <span class="online-dot" :class="{ on: partnerOnline }" />
         </div>
         <div class="meta">
           <div class="name">{{ partner.nickname || '-' }}</div>
-          <div class="sub app-muted">{{ partner.username || '-' }}</div>
+          <div class="sub app-muted">
+            <span>{{ partner.username || '-' }}</span>
+            <span class="status-text" :class="{ on: partnerOnline }">{{ partnerOnline ? '在线' : '离线' }}</span>
+          </div>
         </div>
       </div>
 
@@ -121,7 +127,42 @@ onMounted(() => refresh(true))
   background: linear-gradient(135deg, rgba(255, 99, 132, 0.18), rgba(99, 102, 241, 0.16));
   color: rgba(88, 28, 135, 0.92);
   border: 1px solid rgba(255, 255, 255, 0.7);
+  position: relative;
 }
+
+/* 在线状态圆点 */
+.online-dot {
+  position: absolute;
+  bottom: 2px;
+  right: 2px;
+  width: 11px;
+  height: 11px;
+  border-radius: 50%;
+  background: #9ca3af;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 3px rgba(17, 24, 39, 0.1);
+  transition: background 0.35s ease, box-shadow 0.35s ease;
+}
+.online-dot.on {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18), 0 1px 3px rgba(17, 24, 39, 0.1);
+  animation: dotPulse 2.5s ease-in-out infinite;
+}
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18), 0 1px 3px rgba(17, 24, 39, 0.1); }
+  50% { box-shadow: 0 0 0 6px rgba(34, 197, 94, 0.08), 0 1px 3px rgba(17, 24, 39, 0.1); }
+}
+
+.status-text {
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+  color: #9ca3af;
+}
+.status-text.on {
+  color: #22c55e;
+}
+
 .meta {
   flex: 1;
   min-width: 0;
@@ -160,4 +201,3 @@ onMounted(() => refresh(true))
   margin-bottom: 6px;
 }
 </style>
-

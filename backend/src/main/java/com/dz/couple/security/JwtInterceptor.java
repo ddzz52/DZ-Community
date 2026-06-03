@@ -47,6 +47,7 @@ public class JwtInterceptor implements HandlerInterceptor {
                 throw new BusinessException(ErrorCode.UNAUTHORIZED);
             }
             CurrentUser.setCoupleId(user.getCoupleId());
+            CurrentUser.setRole(user.getRole());
             return true;
         } catch (Exception e) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);

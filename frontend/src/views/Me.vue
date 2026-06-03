@@ -26,6 +26,35 @@ let sigTickTimer = 0
 const headIn = ref(false)
 const inviteCode = ref('')
 const inviteDialog = ref(false)
+const partnerOnline = ref(false)
+
+// ==================== 绑定邀请码（登录后补填） ====================
+const bindDialog = ref(false)
+const bindForm = reactive({ inviteCode: '' })
+const bindLoading = ref(false)
+const bindInviteCode = async () => {
+  if (!bindForm.inviteCode.trim()) {
+    ElMessage.warning('请输入邀请码')
+    return
+  }
+  try {
+    bindLoading.value = true
+    const user = await http.post('/api/couple/bind', { inviteCode: bindForm.inviteCode.trim() })
+    auth.user = user
+    auth.persist()
+    ElMessage.success('绑定成功！已加入伴侣的空间')
+    bindDialog.value = false
+    await refresh(true)
+    await loadInviteCode()
+  } catch (e) {
+    ElMessage.error(e?.message || '绑定失败')
+  } finally {
+    bindLoading.value = false
+  }
+}
+
+// ==================== 管理员 ====================
+const isAdmin = computed(() => meUser.value?.role === 'ADMIN')
 
 const theme = ref('light')
 const applyTheme = () => {
@@ -86,6 +115,7 @@ const refresh = async (silent) => {
     loading.value = true
     const data = await http.get('/api/profile')
     profile.value = data
+    partnerOnline.value = !!data?.partnerOnline
     if (data?.me) {
       auth.user = data.me
       auth.persist()
@@ -576,16 +606,20 @@ onBeforeUnmount(() => {
         </div>
 
         <div class="person right" :class="{ clickable: !!profile?.partner }" role="button" tabindex="0" @click="openPartner">
-          <div class="pavatar">
+          <div class="pavatar" :class="{ online: partnerOnline, offline: profile?.partner && !partnerOnline }">
             <img v-if="profile?.partner?.avatarUrl" :src="assetUrl(profile.partner.avatarUrl)" alt="" />
             <span v-else>{{ initialFor(profile?.partner) }}</span>
+            <span v-if="profile?.partner" class="online-dot" :class="{ on: partnerOnline }" />
           </div>
           <div class="pmeta">
             <div class="pname">
               <span>{{ profile?.partner?.nickname || (profile?.partner ? '-' : '等待你的另一半') }}</span>
               <el-tag v-if="profile?.partner" effect="light" round size="small" class="ptag">我的另一半</el-tag>
             </div>
-            <div v-if="profile?.partner" class="pid app-muted">ID：{{ profile.partner.id || '-' }}</div>
+            <div v-if="profile?.partner" class="pid app-muted">
+              <span>ID：{{ profile.partner.id || '-' }}</span>
+              <span class="status-text" :class="{ on: partnerOnline }">{{ partnerOnline ? '在线' : '离线' }}</span>
+            </div>
             <div v-else class="pid app-muted">还没有绑定第二个账号</div>
           </div>
         </div>
@@ -706,6 +740,24 @@ onBeforeUnmount(() => {
               <div class="settexts">
                 <div class="setname">邀请码</div>
                 <div class="setdesc app-muted">分享邀请码让伴侣加入你的空间</div>
+              </div>
+            </div>
+            <div class="setright" aria-hidden="true">
+              <span class="arr">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+            </div>
+          </button>
+
+          <!-- 没有伴侣时，显示绑定邀请码入口 -->
+          <button v-if="!profile?.partner" class="setrow" type="button" @click="bindDialog = true">
+            <div class="setleft">
+              <div class="seticon" aria-hidden="true">🔗</div>
+              <div class="settexts">
+                <div class="setname">绑定邀请码</div>
+                <div class="setdesc app-muted">输入伴侣的邀请码，加入同一空间</div>
               </div>
             </div>
             <div class="setright" aria-hidden="true">
@@ -958,6 +1010,36 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
+      <!-- ====== 管理员面板 ====== -->
+      <div v-if="isAdmin" class="panel">
+        <div class="panelhead">
+          <div class="paneltitle">🛡️ 管理员面板</div>
+        </div>
+        <div class="panelbody">
+          <button class="setrow" type="button" @click="router.push('/app/admin')">
+            <div class="setleft">
+              <div class="seticon" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 3a4 4 0 014 4v1h2a1 1 0 011 1v11a1 1 0 01-1 1H6a1 1 0 01-1-1V9a1 1 0 011-1h2V7a4 4 0 014-4z" stroke="currentColor" stroke-width="1.8"/>
+                  <circle cx="12" cy="14" r="1.5" fill="currentColor"/>
+                </svg>
+              </div>
+              <div class="settexts">
+                <div class="setname">用户管理</div>
+                <div class="setdesc app-muted">查看、管理所有注册用户</div>
+              </div>
+            </div>
+            <div class="setright" aria-hidden="true">
+              <span class="arr">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+            </div>
+          </button>
+        </div>
+      </div>
+
       <div class="panel annpanel" :style="importantAnnStyle">
         <div class="panelhead">
           <div class="paneltitle">我们的纪念日</div>
@@ -1131,6 +1213,20 @@ onBeforeUnmount(() => {
       <el-button type="primary" @click="copyInviteCode">复制邀请码</el-button>
     </template>
   </el-dialog>
+
+  <!-- 绑定邀请码弹窗（登录后补填） -->
+  <el-dialog v-model="bindDialog" title="绑定邀请码" width="92%">
+    <div style="text-align:center;padding:8px 0">
+      <p style="font-size:14px;color:var(--app-muted);margin:0 0 16px">输入伴侣给你的邀请码，即可加入同一情侣空间</p>
+      <el-input v-model="bindForm.inviteCode" placeholder="请输入8位邀请码" maxlength="8" style="width:200px;text-align:center" size="large">
+        <template #prefix>🔗</template>
+      </el-input>
+    </div>
+    <template #footer>
+      <el-button @click="bindDialog = false" :disabled="bindLoading">取消</el-button>
+      <el-button type="primary" @click="bindInviteCode" :loading="bindLoading">确认绑定</el-button>
+    </template>
+  </el-dialog>
 </template>
 
 <style scoped>
@@ -1279,6 +1375,46 @@ onBeforeUnmount(() => {
   object-fit: cover;
   display: block;
 }
+
+/* 在线状态小圆点 */
+.online-dot {
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #9ca3af;
+  border: 2px solid rgba(255, 255, 255, 0.9);
+  box-shadow: 0 1px 4px rgba(17, 24, 39, 0.12);
+  transition: background 0.35s ease, box-shadow 0.35s ease;
+}
+.online-dot.on {
+  background: #22c55e;
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18), 0 1px 4px rgba(17, 24, 39, 0.12);
+  animation: dotPulse 2.5s ease-in-out infinite;
+}
+@keyframes dotPulse {
+  0%, 100% { box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.18), 0 1px 4px rgba(17, 24, 39, 0.12); }
+  50% { box-shadow: 0 0 0 7px rgba(34, 197, 94, 0.08), 0 1px 4px rgba(17, 24, 39, 0.12); }
+}
+
+/* 在线/离线文字 */
+.status-text {
+  font-size: 12px;
+  font-weight: 600;
+  margin-left: 8px;
+  color: #9ca3af;
+}
+.status-text.on {
+  color: #22c55e;
+}
+
+/* pavatar relative for dot positioning */
+.person .pavatar {
+  position: relative;
+}
+
 @media (hover: hover) {
   .pavatar:hover {
     transform: translateY(-3px);

@@ -38,44 +38,110 @@ public class UserService {
         this.notificationService = notificationService;
     }
 
+    /**
+     * 注册逻辑：
+     * - 提供有效邀请码 → 加入该情侣空间（需空间未满）
+     * - 未提供邀请码 → 创建全新情侣空间
+     * - 情侣空间第一个人自动成为 ADMIN
+     */
     @Transactional
     public UserVO register(String username, String password, String nickname, Date loveDate, Integer gender, String avatarUrl, String inviteCode) {
+        // 检查用户名唯一性
         User exist = userMapper.findByUsername(username);
         if (exist != null) {
             throw new BusinessException(ErrorCode.CONFLICT, "用户名已存在");
         }
 
-        Couple couple = null;
+        Couple couple;
+        boolean isFirstMember = false;
+
         if (inviteCode != null && !inviteCode.trim().isEmpty()) {
+            // 通过邀请码加入已有空间
             couple = coupleMapper.findByInviteCode(inviteCode.trim());
             if (couple == null) {
-                throw new BusinessException(ErrorCode.NOT_FOUND, "邀请码无效");
+                throw new BusinessException(ErrorCode.NOT_FOUND, "邀请码无效，请检查后重试");
             }
             long memberCount = userMapper.countByCoupleId(couple.getId());
             if (memberCount >= 2) {
                 throw new BusinessException(ErrorCode.FORBIDDEN, "该情侣空间已满（最多2人）");
             }
         } else {
-            couple = coupleMapper.findAvailable();
-            if (couple == null) {
-                couple = new Couple();
-                couple.setInviteCode(UUID.randomUUID().toString().replace("-", "").substring(0, 8));
-                coupleMapper.insert(couple);
-            }
+            // 未提供邀请码 → 创建新空间
+            couple = new Couple();
+            couple.setInviteCode(generateInviteCode());
+            coupleMapper.insert(couple);
+            isFirstMember = true;
         }
+
+        // 判断角色：空间第一人为 ADMIN，其余为 USER
+        long memberCount = userMapper.countByCoupleId(couple.getId());
+        String role = (memberCount == 0) ? "ADMIN" : "USER";
 
         User user = new User();
         user.setCoupleId(couple.getId());
         user.setUsername(username);
         user.setPasswordHash(passwordUtil.hash(password));
         user.setNickname((nickname == null || nickname.trim().isEmpty()) ? username : nickname.trim());
+        user.setRole(role);
         user.setLoveDate(loveDate);
         user.setGender(gender);
         user.setAvatarUrl(avatarUrl);
         userMapper.insert(user);
 
         UserVO vo = toVO(user);
-        vo.setInviteCode(couple.getInviteCode());
+        // 仅当用户是空间创建者（第一个人）时返回邀请码
+        if (isFirstMember || "ADMIN".equals(role)) {
+            vo.setInviteCode(couple.getInviteCode());
+        }
+        return vo;
+    }
+
+    /**
+     * 登录后绑定邀请码：将当前用户从旧空间迁移到目标空间
+     * 用于用户在注册时未填邀请码，登录后补填的场景
+     */
+    @Transactional
+    public UserVO bindInviteCode(Long userId, Long currentCoupleId, String inviteCode) {
+        if (inviteCode == null || inviteCode.trim().isEmpty()) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "邀请码不能为空");
+        }
+
+        User me = userMapper.findById(userId);
+        if (me == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "用户不存在");
+        }
+
+        // 查找目标空间
+        Couple targetCouple = coupleMapper.findByInviteCode(inviteCode.trim());
+        if (targetCouple == null) {
+            throw new BusinessException(ErrorCode.NOT_FOUND, "邀请码无效");
+        }
+
+        // 不能绑定自己的空间
+        if (targetCouple.getId().equals(currentCoupleId)) {
+            throw new BusinessException(ErrorCode.BAD_REQUEST, "不能绑定自己的邀请码");
+        }
+
+        // 目标空间人数检查
+        long targetMemberCount = userMapper.countByCoupleId(targetCouple.getId());
+        if (targetMemberCount >= 2) {
+            throw new BusinessException(ErrorCode.FORBIDDEN, "目标情侣空间已满（最多2人）");
+        }
+
+        // 检查当前空间是否只有自己（如果是，迁移后需要清理旧空间）
+        long currentMemberCount = userMapper.countByCoupleId(currentCoupleId);
+
+        // 执行绑定：更新用户的 coupleId
+        userMapper.updateCoupleId(userId, targetCouple.getId());
+
+        // 如果旧空间只剩自己，迁移后旧空间变空，清理旧空间
+        if (currentMemberCount <= 1) {
+            coupleMapper.deleteById(currentCoupleId);
+        }
+
+        // 刷新用户数据并返回
+        User updated = userMapper.findById(userId);
+        UserVO vo = toVO(updated);
         return vo;
     }
 
@@ -113,16 +179,10 @@ public class UserService {
     }
 
     private String safeShort(String s, int max) {
-        if (s == null) {
-            return null;
-        }
+        if (s == null) return null;
         String t = s.trim().replaceAll("\\s+", " ");
-        if (t.isEmpty()) {
-            return null;
-        }
-        if (t.length() <= max) {
-            return t;
-        }
+        if (t.isEmpty()) return null;
+        if (t.length() <= max) return t;
         return t.substring(0, max);
     }
 
@@ -134,7 +194,21 @@ public class UserService {
         return toVO(user);
     }
 
-    private UserVO toVO(User user) {
+    /**
+     * 生成8位邀请码（排除易混淆字符 0/O/1/I/l）
+     */
+    private String generateInviteCode() {
+        String raw = UUID.randomUUID().toString().replace("-", "").toUpperCase();
+        // 移除易混淆字符后取前8位
+        String cleaned = raw.replaceAll("[0O1IL]", "");
+        if (cleaned.length() < 8) {
+            // fallback：重新生成
+            return generateInviteCode();
+        }
+        return cleaned.substring(0, 8);
+    }
+
+    public UserVO toVO(User user) {
         UserVO vo = new UserVO();
         vo.setId(user.getId());
         vo.setCoupleId(user.getCoupleId());
@@ -142,7 +216,12 @@ public class UserService {
         vo.setNickname(user.getNickname());
         vo.setAvatarUrl(user.getAvatarUrl());
         vo.setGender(user.getGender());
+        vo.setRole(user.getRole());
         vo.setLoveDate(user.getLoveDate());
+        vo.setZodiac(user.getZodiac());
+        vo.setSignature(user.getSignature());
+        vo.setTempSignature(user.getTempSignature());
+        vo.setSignatureExpireTime(user.getSignatureExpireTime());
         return vo;
     }
 }

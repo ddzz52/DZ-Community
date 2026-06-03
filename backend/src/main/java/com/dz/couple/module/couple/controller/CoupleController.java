@@ -6,6 +6,9 @@ import com.dz.couple.common.CurrentUser;
 import com.dz.couple.common.ErrorCode;
 import com.dz.couple.module.couple.entity.Couple;
 import com.dz.couple.module.couple.mapper.CoupleMapper;
+import com.dz.couple.module.user.dto.UserVO;
+import com.dz.couple.module.user.mapper.UserMapper;
+import com.dz.couple.module.user.service.UserService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
@@ -18,6 +21,12 @@ public class CoupleController {
 
     @Autowired
     private CoupleMapper coupleMapper;
+
+    @Autowired
+    private UserMapper userMapper;
+
+    @Autowired
+    private UserService userService;
 
     /** 获取"关于我们" */
     @GetMapping("/about")
@@ -41,6 +50,36 @@ public class CoupleController {
         Couple couple = coupleMapper.findById(coupleId);
         return ApiResponse.ok(Collections.singletonMap("inviteCode",
                 couple != null && couple.getInviteCode() != null ? couple.getInviteCode() : ""));
+    }
+
+    /**
+     * 登录后绑定邀请码：将当前用户迁移到目标情侣空间
+     * 用户注册时若未填邀请码，登录后可在此补填
+     */
+    @PostMapping("/bind")
+    public ApiResponse<UserVO> bindInviteCode(@RequestBody Map<String, String> body) {
+        Long userId = CurrentUser.getUserId();
+        Long coupleId = CurrentUser.getCoupleId();
+        if (userId == null || coupleId == null) {
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+        }
+        String inviteCode = body.get("inviteCode");
+        return ApiResponse.ok(userService.bindInviteCode(userId, coupleId, inviteCode));
+    }
+
+    /** 验证邀请码是否有效（不执行绑定） */
+    @GetMapping("/check-invite")
+    public ApiResponse<Map<String, Object>> checkInviteCode(@RequestParam("code") String code) {
+        if (code == null || code.trim().isEmpty()) {
+            return ApiResponse.ok(Collections.singletonMap("valid", false));
+        }
+        Couple couple = coupleMapper.findByInviteCode(code.trim());
+        if (couple == null) {
+            return ApiResponse.ok(Collections.singletonMap("valid", false));
+        }
+        long memberCount = userMapper.countByCoupleId(couple.getId());
+        boolean valid = memberCount < 2;
+        return ApiResponse.ok(Map.of("valid", valid, "memberCount", memberCount));
     }
 
     /** 获取月度预算 */
