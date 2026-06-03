@@ -20,6 +20,12 @@ public class AdminController {
         this.adminService = adminService;
     }
 
+    /** 管理员：系统概览统计 */
+    @GetMapping("/stats")
+    public ApiResponse<Map<String, Object>> stats() {
+        return ApiResponse.ok(adminService.getSystemStats(CurrentUser.getUserId()));
+    }
+
     /** 管理员：查看所有用户列表 */
     @GetMapping("/users")
     public ApiResponse<List<UserVO>> listUsers() {

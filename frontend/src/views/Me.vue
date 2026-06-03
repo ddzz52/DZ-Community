@@ -791,6 +791,29 @@ onBeforeUnmount(() => {
               </span>
             </div>
           </button>
+
+          <!-- 管理员入口（仅 ADMIN 可见，与安全中心其他行平级） -->
+          <button v-if="isAdmin" class="setrow" type="button" @click="router.push('/app/admin')">
+            <div class="setleft">
+              <div class="seticon seticon-admin" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M12 3a4 4 0 014 4v1h2a1 1 0 011 1v11a1 1 0 01-1 1H6a1 1 0 01-1-1V9a1 1 0 011-1h2V7a4 4 0 014-4z" stroke="currentColor" stroke-width="1.8"/>
+                  <circle cx="12" cy="14" r="1.5" fill="currentColor"/>
+                </svg>
+              </div>
+              <div class="settexts">
+                <div class="setname">系统管理</div>
+                <div class="setdesc app-muted">用户管理、系统概览</div>
+              </div>
+            </div>
+            <div class="setright" aria-hidden="true">
+              <span class="arr">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+            </div>
+          </button>
         </div>
       </div>
 
@@ -1003,36 +1026,6 @@ onBeforeUnmount(() => {
               <span class="arr">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" />
-                </svg>
-              </span>
-            </div>
-          </button>
-        </div>
-      </div>
-
-      <!-- ====== 管理员面板 ====== -->
-      <div v-if="isAdmin" class="panel">
-        <div class="panelhead">
-          <div class="paneltitle">🛡️ 管理员面板</div>
-        </div>
-        <div class="panelbody">
-          <button class="setrow" type="button" @click="router.push('/app/admin')">
-            <div class="setleft">
-              <div class="seticon" aria-hidden="true">
-                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M12 3a4 4 0 014 4v1h2a1 1 0 011 1v11a1 1 0 01-1 1H6a1 1 0 01-1-1V9a1 1 0 011-1h2V7a4 4 0 014-4z" stroke="currentColor" stroke-width="1.8"/>
-                  <circle cx="12" cy="14" r="1.5" fill="currentColor"/>
-                </svg>
-              </div>
-              <div class="settexts">
-                <div class="setname">用户管理</div>
-                <div class="setdesc app-muted">查看、管理所有注册用户</div>
-              </div>
-            </div>
-            <div class="setright" aria-hidden="true">
-              <span class="arr">
-                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
-                  <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
               </span>
             </div>
@@ -1723,6 +1716,11 @@ onBeforeUnmount(() => {
   background: rgba(239, 68, 68, 0.08);
   border-color: rgba(239, 68, 68, 0.16);
   color: #ef4444;
+}
+.seticon-admin {
+  background: rgba(99, 102, 241, 0.1);
+  border-color: rgba(99, 102, 241, 0.18);
+  color: #6366f1;
 }
 .setname-danger {
   color: #ef4444 !important;

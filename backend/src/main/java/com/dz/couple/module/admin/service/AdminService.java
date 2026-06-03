@@ -10,8 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.*;
 
 @Service
 public class AdminService {
@@ -22,6 +21,22 @@ public class AdminService {
     public AdminService(UserMapper userMapper, CoupleMapper coupleMapper) {
         this.userMapper = userMapper;
         this.coupleMapper = coupleMapper;
+    }
+
+    /** 系统概览统计 */
+    public Map<String, Object> getSystemStats(Long adminUserId) {
+        ensureAdmin(adminUserId);
+        List<User> allUsers = userMapper.listAll();
+        long totalUsers = allUsers.size();
+        long adminCount = allUsers.stream().filter(u -> "ADMIN".equals(u.getRole())).count();
+        // 统计情侣空间数（取不同的 coupleId）
+        long coupleCount = allUsers.stream().map(User::getCoupleId).filter(Objects::nonNull).distinct().count();
+
+        Map<String, Object> stats = new LinkedHashMap<>();
+        stats.put("totalUsers", totalUsers);
+        stats.put("totalCouples", coupleCount);
+        stats.put("adminCount", adminCount);
+        return stats;
     }
 
     /** 管理员查看所有用户 */
