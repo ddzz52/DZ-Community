@@ -1,7 +1,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useAuthStore } from '../stores/auth'
 import { useDashboardStore } from '../stores/dashboard'
 import http from '../api/http'
@@ -50,6 +50,22 @@ const bindInviteCode = async () => {
     ElMessage.error(e?.message || '绑定失败')
   } finally {
     bindLoading.value = false
+  }
+}
+
+// ==================== 注销账号 ====================
+const deleteAccount = async () => {
+  try {
+    await ElMessageBox.confirm(
+      '注销后你的账号及个人数据将被永久删除。如果空间只剩你一人，空间也会被清理。确定继续？',
+      '注销账号', { confirmButtonText: '确认注销', cancelButtonText: '取消', type: 'error' }
+    )
+    await http.delete('/api/users/me')
+    ElMessage.success('账号已注销')
+    auth.logout()
+    router.replace('/login')
+  } catch (e) {
+    if (e !== 'cancel' && e !== 'close') ElMessage.error(e?.message || '注销失败')
   }
 }
 
@@ -808,6 +824,28 @@ onBeforeUnmount(() => {
             </div>
             <div class="setright" aria-hidden="true">
               <span class="arr">
+                <svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+            </div>
+          </button>
+
+          <!-- 注销账号 -->
+          <button class="setrow" type="button" @click="deleteAccount">
+            <div class="setleft">
+              <div class="seticon seticon-delete" aria-hidden="true">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" xmlns="http://www.w3.org/2000/svg">
+                  <path d="M3 6h18M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </div>
+              <div class="settexts">
+                <div class="setname setname-delete">注销账号</div>
+                <div class="setdesc app-muted">永久删除你的账号及个人数据</div>
+              </div>
+            </div>
+            <div class="setright" aria-hidden="true">
+              <span class="arr arr-delete">
                 <svg viewBox="0 0 24 24" width="18" height="18" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <path d="M9 6l6 6-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
                 </svg>
@@ -1721,6 +1759,17 @@ onBeforeUnmount(() => {
   background: rgba(99, 102, 241, 0.1);
   border-color: rgba(99, 102, 241, 0.18);
   color: #6366f1;
+}
+.seticon-delete {
+  background: rgba(239, 68, 68, 0.06);
+  border-color: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+.setname-delete {
+  color: #ef4444 !important;
+}
+.arr-delete {
+  color: #ef4444;
 }
 .setname-danger {
   color: #ef4444 !important;

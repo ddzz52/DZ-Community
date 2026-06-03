@@ -28,14 +28,16 @@ public class UserService {
     private final JwtUtil jwtUtil;
     private final CoupleMapper coupleMapper;
     private final NotificationService notificationService;
+    private final LoginRateLimitService rateLimitService;
 
     @Autowired
-    public UserService(UserMapper userMapper, PasswordUtil passwordUtil, JwtUtil jwtUtil, CoupleMapper coupleMapper, NotificationService notificationService) {
+    public UserService(UserMapper userMapper, PasswordUtil passwordUtil, JwtUtil jwtUtil, CoupleMapper coupleMapper, NotificationService notificationService, LoginRateLimitService rateLimitService) {
         this.userMapper = userMapper;
         this.passwordUtil = passwordUtil;
         this.jwtUtil = jwtUtil;
         this.coupleMapper = coupleMapper;
         this.notificationService = notificationService;
+        this.rateLimitService = rateLimitService;
     }
 
     /**
@@ -146,8 +148,13 @@ public class UserService {
     }
 
     public LoginResponse login(String username, String password, String ip, String ua) {
+        // 登录频率检查
+        rateLimitService.check(ip);
+
         User user = userMapper.findByUsername(username);
         if (user == null || !passwordUtil.matches(password, user.getPasswordHash())) {
+            // 记录失败
+            rateLimitService.recordFailure(ip);
             if (user != null && user.getId() != null && user.getCoupleId() != null) {
                 Date today = Date.from(LocalDate.now().atStartOfDay(ZoneId.systemDefault()).toInstant());
                 String ipText = safeShort(ip, 64);
@@ -172,10 +179,28 @@ public class UserService {
             }
             throw new BusinessException(ErrorCode.UNAUTHORIZED, "用户名或密码错误");
         }
+        // 登录成功，清除失败计数
+        rateLimitService.clearOnSuccess(ip);
+
         LoginResponse resp = new LoginResponse();
         resp.setToken(jwtUtil.createToken(user.getId()));
         resp.setUser(toVO(user));
         return resp;
+    }
+
+    /** 用户自助注销账号 — 软删除（清理个人数据，保留空间给伴侣） */
+    @Transactional
+    public void deleteMyAccount(Long userId, Long coupleId) {
+        User me = userMapper.findById(userId);
+        if (me == null || me.getCoupleId() == null || !me.getCoupleId().equals(coupleId))
+            throw new BusinessException(ErrorCode.UNAUTHORIZED);
+
+        long memberCount = userMapper.countByCoupleId(coupleId);
+        if (memberCount <= 1) {
+            // 最后一人：删除空间 + 用户
+            coupleMapper.deleteById(coupleId);
+        }
+        userMapper.deleteById(userId);
     }
 
     private String safeShort(String s, int max) {

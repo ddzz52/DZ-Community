@@ -1,6 +1,7 @@
 package com.dz.couple.module.profile.service;
 
 import com.dz.couple.common.BusinessException;
+import com.dz.couple.common.CacheService;
 import com.dz.couple.common.ErrorCode;
 import com.dz.couple.module.anniversary.mapper.AnniversaryMapper;
 import com.dz.couple.module.couple.entity.Couple;
@@ -45,9 +46,13 @@ public class ProfileService {
     private final UserSettingsMapper userSettingsMapper;
     private final NotificationService notificationService;
     private final ChatHub chatHub;
+    private final CacheService cacheService;
+
+    private static final String CACHE_PREFIX = "cache:profile:";
+    private static final long CACHE_TTL_SEC = 15;
 
     @Autowired
-    public ProfileService(UserMapper userMapper, CoupleMapper coupleMapper, AnniversaryMapper anniversaryMapper, DiaryMapper diaryMapper, PhotoMapper photoMapper, PasswordUtil passwordUtil, UserSettingsMapper userSettingsMapper, NotificationService notificationService, ChatHub chatHub) {
+    public ProfileService(UserMapper userMapper, CoupleMapper coupleMapper, AnniversaryMapper anniversaryMapper, DiaryMapper diaryMapper, PhotoMapper photoMapper, PasswordUtil passwordUtil, UserSettingsMapper userSettingsMapper, NotificationService notificationService, ChatHub chatHub, CacheService cacheService) {
         this.userMapper = userMapper;
         this.coupleMapper = coupleMapper;
         this.anniversaryMapper = anniversaryMapper;
@@ -57,9 +62,14 @@ public class ProfileService {
         this.userSettingsMapper = userSettingsMapper;
         this.notificationService = notificationService;
         this.chatHub = chatHub;
+        this.cacheService = cacheService;
     }
 
     public ProfileResponse getProfile(Long userId, Long coupleId) {
+        // Redis 缓存 15 秒
+        String cacheKey = CACHE_PREFIX + coupleId;
+        ProfileResponse cached = cacheService.get(cacheKey, ProfileResponse.class);
+        if (cached != null && cached.getMe() != null) return cached;
         User me = userMapper.findById(userId);
         if (me == null || me.getCoupleId() == null || !me.getCoupleId().equals(coupleId)) {
             throw new BusinessException(ErrorCode.UNAUTHORIZED);
@@ -92,7 +102,14 @@ public class ProfileService {
         resp.setPartner(partner == null ? null : toVO(partner));
         // 在线状态：通过 WebSocket ChatHub 判断
         resp.setPartnerOnline(partner != null && chatHub.hasOnline(partner.getId()));
+        // 写入缓存（partnerOnline 不缓存，每次实时查）
+        cacheService.set(cacheKey, resp, CACHE_TTL_SEC);
         return resp;
+    }
+
+    /** Profile 数据变更后清除缓存 */
+    public void evictCache(Long coupleId) {
+        cacheService.delete(CACHE_PREFIX + coupleId);
     }
 
     @Transactional
