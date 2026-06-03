@@ -3,9 +3,21 @@
 
 USE couple;
 
--- 1. t_user 增加角色字段
-ALTER TABLE t_user
-    ADD COLUMN IF NOT EXISTS role VARCHAR(16) NOT NULL DEFAULT 'USER' COMMENT '角色: ADMIN/USER' AFTER gender;
+-- 1. t_user 增加角色字段（MySQL 8.0 需用存储过程判断列是否存在）
+DROP PROCEDURE IF EXISTS add_role_column;
+DELIMITER $$
+CREATE PROCEDURE add_role_column()
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM information_schema.COLUMNS
+        WHERE TABLE_SCHEMA = 'couple' AND TABLE_NAME = 't_user' AND COLUMN_NAME = 'role'
+    ) THEN
+        ALTER TABLE t_user ADD COLUMN role VARCHAR(16) NOT NULL DEFAULT 'USER' COMMENT '角色: ADMIN/USER' AFTER gender;
+    END IF;
+END$$
+DELIMITER ;
+CALL add_role_column();
+DROP PROCEDURE IF EXISTS add_role_column;
 
 -- 2. 第一个注册的用户设为管理员
 UPDATE t_user SET role = 'ADMIN' WHERE id = (SELECT MIN(id) FROM (SELECT MIN(id) AS id FROM t_user) AS t);
