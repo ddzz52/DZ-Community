@@ -23,4 +23,8 @@ public interface PasswordResetRequestMapper {
 
     @Update("update t_password_reset_request set used_flag = 1, updated_at = now() where id = #{id}")
     int markUsed(@Param("id") Long id);
+
+    /** 使用户所有有效的重置请求失效 */
+    @Update("update t_password_reset_request set used_flag = 1, updated_at = now() where user_id = #{userId} and used_flag = 0")
+    int deactivateByUserId(@Param("userId") Long userId);
 }

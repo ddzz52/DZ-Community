@@ -453,3 +453,14 @@ CREATE TABLE IF NOT EXISTS agent_memory (
   INDEX idx_agent_mem_couple (couple_id, memory_type),
   UNIQUE INDEX uk_agent_mem_key (couple_id, memory_type, memory_key)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- ==================== 系统公告 ====================
+CREATE TABLE IF NOT EXISTS t_system_announcement (
+  id BIGINT PRIMARY KEY AUTO_INCREMENT,
+  content VARCHAR(500) NOT NULL COMMENT '公告内容',
+  active TINYINT NOT NULL DEFAULT 1 COMMENT '1=启用 0=停用',
+  created_by BIGINT NOT NULL,
+  created_at DATETIME NOT NULL,
+  updated_at DATETIME NOT NULL,
+  INDEX idx_announcement_active (active, id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;

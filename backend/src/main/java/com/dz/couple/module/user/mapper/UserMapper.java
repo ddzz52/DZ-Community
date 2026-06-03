@@ -68,4 +68,8 @@ public interface UserMapper {
 
     @Update("update t_user set password_hash = #{passwordHash}, updated_at = now() where id = #{id}")
     int updatePasswordHash(@Param("id") Long id, @Param("passwordHash") String passwordHash);
+
+    /** 管理员：修改用户名 */
+    @Update("update t_user set username = #{username}, updated_at = now() where id = #{id}")
+    int updateUsername(@Param("id") Long id, @Param("username") String username);
 }

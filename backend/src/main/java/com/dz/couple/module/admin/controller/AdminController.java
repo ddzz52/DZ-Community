@@ -20,28 +20,40 @@ public class AdminController {
         this.adminService = adminService;
     }
 
-    /** 管理员：系统概览统计 */
+    /** 系统概览统计 */
     @GetMapping("/stats")
     public ApiResponse<Map<String, Object>> stats() {
         return ApiResponse.ok(adminService.getSystemStats(CurrentUser.getUserId()));
     }
 
-    /** 管理员：查看所有用户列表 */
+    /** 用户列表 */
     @GetMapping("/users")
     public ApiResponse<List<UserVO>> listUsers() {
         return ApiResponse.ok(adminService.listAllUsers(CurrentUser.getUserId()));
     }
 
-    /** 管理员：删除用户 */
+    /** 删除用户 */
     @DeleteMapping("/users/{userId}")
     public ApiResponse<Void> deleteUser(@PathVariable Long userId) {
         adminService.deleteUser(CurrentUser.getUserId(), userId);
         return ApiResponse.ok(null);
     }
 
-    /** 管理员：修改用户角色 */
+    /** 修改用户角色 */
     @PutMapping("/users/{userId}/role")
     public ApiResponse<UserVO> updateUserRole(@PathVariable Long userId, @RequestBody Map<String, String> body) {
         return ApiResponse.ok(adminService.updateUserRole(CurrentUser.getUserId(), userId, body.get("role")));
+    }
+
+    /** 修改用户登录名 */
+    @PutMapping("/users/{userId}/username")
+    public ApiResponse<UserVO> updateUsername(@PathVariable Long userId, @RequestBody Map<String, String> body) {
+        return ApiResponse.ok(adminService.updateUsername(CurrentUser.getUserId(), userId, body.get("username")));
+    }
+
+    /** 强制密码重置 — 返回6位验证码 */
+    @PostMapping("/users/{userId}/force-reset")
+    public ApiResponse<Map<String, String>> forceResetPassword(@PathVariable Long userId) {
+        return ApiResponse.ok(adminService.forceResetPassword(CurrentUser.getUserId(), userId));
     }
 }

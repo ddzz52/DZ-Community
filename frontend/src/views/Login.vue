@@ -81,6 +81,14 @@ const confirmReset = async () => {
   }
 }
 
+// ==================== 系统公告 ====================
+const announcements = ref([])
+const fetchAnnouncements = async () => {
+  try {
+    announcements.value = await http.get('/api/announcements/active')
+  } catch (e) { /* ignore */ }
+}
+
 // ==================== 鼠标跟随光晕 ====================
 const mouseX = ref(50)
 const mouseY = ref(50)
@@ -94,6 +102,7 @@ const pwdVisible = ref(false)
 
 onMounted(() => {
   window.addEventListener('mousemove', onMouseMove, { passive: true })
+  fetchAnnouncements()
 })
 onBeforeUnmount(() => {
   window.removeEventListener('mousemove', onMouseMove)
@@ -143,6 +152,14 @@ onBeforeUnmount(() => {
         <div class="brand-text">
           <h1 class="brand-title">双人情侣小屋</h1>
           <p class="brand-sub">只属于你们的私密空间</p>
+        </div>
+      </div>
+
+      <!-- ====== 系统公告 ====== -->
+      <div v-if="announcements.length" class="announce-banner">
+        <div v-for="a in announcements" :key="a.id" class="announce-item">
+          <span class="announce-icon">📢</span>
+          <span>{{ a.content }}</span>
         </div>
       </div>
 
@@ -829,6 +846,34 @@ onBeforeUnmount(() => {
 .text-link.primary:hover {
   color: #4f46e5;
   background: rgba(99, 102, 241, 0.06);
+}
+
+/* ==================== 系统公告横幅 ==================== */
+.announce-banner {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  animation: cardIn 0.65s 0.15s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+.announce-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px;
+  border-radius: 12px;
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  font-size: 13px;
+  color: rgba(180, 83, 9, 0.9);
+  backdrop-filter: blur(8px);
+}
+.announce-icon { flex-shrink: 0; }
+
+:root[data-theme='dark'] .announce-item {
+  background: rgba(251, 191, 36, 0.08);
+  border-color: rgba(251, 191, 36, 0.15);
+  color: rgba(253, 224, 71, 0.85);
 }
 
 /* ==================== 底部注脚 ==================== */
