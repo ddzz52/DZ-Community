@@ -100,9 +100,49 @@ const onMouseMove = (e) => {
 // ==================== 密码可见性 ====================
 const pwdVisible = ref(false)
 
+// ==================== 已有登录态处理 ====================
+const existingUser = ref(null)
+const checkingToken = ref(false)
+const showLoginForm = ref(true)
+
+const checkExistingToken = async () => {
+  if (!auth.token) { showLoginForm.value = true; return }
+  checkingToken.value = true
+  try {
+    const me = await http.get('/api/users/me')
+    if (me && me.id) {
+      existingUser.value = me
+      showLoginForm.value = false
+    } else {
+      // token 无效，清除
+      auth.logout()
+      showLoginForm.value = true
+    }
+  } catch (e) {
+    auth.logout()
+    showLoginForm.value = true
+  } finally {
+    checkingToken.value = false
+  }
+}
+
+const continueAsUser = () => {
+  const redirect = route.query.redirect || '/app/home'
+  router.replace(redirect)
+}
+
+const switchAccount = () => {
+  auth.logout()
+  existingUser.value = null
+  showLoginForm.value = true
+  form.username = ''
+  form.password = ''
+}
+
 onMounted(() => {
   window.addEventListener('mousemove', onMouseMove, { passive: true })
   fetchAnnouncements()
+  checkExistingToken()
 })
 onBeforeUnmount(() => {
   window.removeEventListener('mousemove', onMouseMove)
@@ -163,8 +203,30 @@ onBeforeUnmount(() => {
         </div>
       </div>
 
+      <!-- ====== 验证中 ====== -->
+      <div v-if="checkingToken" class="login-card">
+        <div class="card-body" style="text-align:center;padding:40px">
+          <span style="color:var(--app-muted)">验证登录状态...</span>
+        </div>
+      </div>
+
+      <!-- ====== 已有登录态 — 用户确认面板 ====== -->
+      <div v-else-if="!showLoginForm && existingUser" class="login-card">
+        <div class="card-header">
+          <span class="card-title">已登录</span>
+          <span class="card-sub">检测到浏览器中已有登录账号</span>
+        </div>
+        <div class="card-body" style="text-align:center">
+          <div class="resume-avatar">{{ (existingUser.nickname || existingUser.username || '?').slice(0, 1).toUpperCase() }}</div>
+          <div class="resume-name">{{ existingUser.nickname || existingUser.username }}</div>
+          <div class="resume-id">@{{ existingUser.username }}</div>
+          <el-button type="primary" style="width:100%;margin-top:18px;height:44px;font-weight:700" @click="continueAsUser">继续使用</el-button>
+          <el-button text style="width:100%;margin-top:8px;color:var(--app-muted)" @click="switchAccount">切换其他账号</el-button>
+        </div>
+      </div>
+
       <!-- ====== 登录卡片 ====== -->
-      <div class="login-card">
+      <div v-else class="login-card">
         <div class="card-header">
           <span class="card-title">欢迎回来</span>
           <span class="card-sub">登录你的专属空间</span>
@@ -544,6 +606,17 @@ onBeforeUnmount(() => {
   color: var(--app-muted);
   letter-spacing: 0.3px;
 }
+
+/* ==================== 已登录面板 ==================== */
+.resume-avatar {
+  width: 72px; height: 72px; border-radius: 22px;
+  display: grid; place-items: center; font-weight: 800; font-size: 28px;
+  background: linear-gradient(135deg, rgba(99,102,241,0.2), rgba(139,92,246,0.18));
+  color: #6366f1; border: 1px solid rgba(255,255,255,0.7);
+  margin: 0 auto 12px;
+}
+.resume-name { font-size: 18px; font-weight: 700; }
+.resume-id { margin-top: 4px; font-size: 13px; color: var(--app-muted); }
 
 /* ==================== 登录卡片 ==================== */
 .login-card {

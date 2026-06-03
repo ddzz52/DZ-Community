@@ -46,9 +46,7 @@ router.beforeEach(async (to) => {
   if (requiresAdmin && auth.user?.role !== 'ADMIN') {
     return { path: '/app/me' }
   }
-  if ((to.path === '/login' || to.path === '/register') && auth.token) {
-    return { path: '/app/home' }
-  }
+  // 不再粗暴拦截登录页 — 由 Login.vue 自行验证 token 有效性并给用户选择权
 })
 
 export default router
