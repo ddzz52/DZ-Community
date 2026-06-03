@@ -45,8 +45,8 @@ public class DashboardService {
     }
 
     public DashboardResponse getDashboard(Long userId, Long coupleId) {
-        // Redis 缓存 30 秒，高频刷首页不再重复查 DB
-        String cacheKey = CACHE_PREFIX + coupleId;
+        // Redis 缓存 30 秒 — key 包含 userId，badges 是用户级数据
+        String cacheKey = CACHE_PREFIX + coupleId + ":" + userId;
         DashboardResponse cached = cacheService.get(cacheKey, DashboardResponse.class);
         if (cached != null) return cached;
 

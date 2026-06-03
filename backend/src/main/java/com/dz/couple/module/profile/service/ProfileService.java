@@ -66,8 +66,8 @@ public class ProfileService {
     }
 
     public ProfileResponse getProfile(Long userId, Long coupleId) {
-        // Redis 缓存 15 秒
-        String cacheKey = CACHE_PREFIX + coupleId;
+        // Redis 缓存 15 秒 — key 必须包含 userId，防止同 couple 串号
+        String cacheKey = CACHE_PREFIX + coupleId + ":" + userId;
         ProfileResponse cached = cacheService.get(cacheKey, ProfileResponse.class);
         if (cached != null && cached.getMe() != null) return cached;
         User me = userMapper.findById(userId);
