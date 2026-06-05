@@ -79,7 +79,10 @@ public class CoupleController {
         }
         long memberCount = userMapper.countByCoupleId(couple.getId());
         boolean valid = memberCount < 2;
-        return ApiResponse.ok(Map.of("valid", valid, "memberCount", memberCount));
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        result.put("valid", valid);
+        result.put("memberCount", memberCount);
+        return ApiResponse.ok(result);
     }
 
     /** 获取月度预算 */

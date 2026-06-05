@@ -61,9 +61,9 @@ public class DashboardService {
         return resp;
     }
 
-    /** 数据变更后清除 Dashboard 缓存 */
+    /** 数据变更后清除 Dashboard 缓存 — 需匹配 cache:dashboard:<coupleId>:<userId> 格式 */
     public void evictCache(Long coupleId) {
-        cacheService.delete(CACHE_PREFIX + coupleId);
+        cacheService.deletePattern(CACHE_PREFIX + coupleId + ":*");
     }
 
     private DashboardResponse.Today buildToday() {

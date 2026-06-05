@@ -107,9 +107,9 @@ public class ProfileService {
         return resp;
     }
 
-    /** Profile 数据变更后清除缓存 */
+    /** Profile 数据变更后清除缓存 — 需匹配 cache:profile:<coupleId>:<userId> 格式 */
     public void evictCache(Long coupleId) {
-        cacheService.delete(CACHE_PREFIX + coupleId);
+        cacheService.deletePattern(CACHE_PREFIX + coupleId + ":*");
     }
 
     @Transactional
@@ -120,12 +120,14 @@ public class ProfileService {
         }
         userMapper.updateProfile(userId, req.getNickname(), req.getAvatarUrl(), req.getGender(), req.getLoveDate(), req.getZodiac());
         User updated = userMapper.findById(userId);
+        evictCache(coupleId);
         return toVO(updated);
     }
 
     @Transactional
     public void updateSignature(Long coupleId, String signature) {
         coupleMapper.updateSignature(coupleId, signature);
+        evictCache(coupleId);
     }
 
     @Transactional
@@ -134,6 +136,7 @@ public class ProfileService {
         String s = safeTrim(req == null ? null : req.getSignature());
         userMapper.updateSignature(userId, s);
         User updated = userMapper.findById(userId);
+        evictCache(coupleId);
         return toVO(updated);
     }
 
@@ -157,6 +160,7 @@ public class ProfileService {
         }
         userMapper.updateTempSignature(userId, temp, expireTime);
         User updated = userMapper.findById(userId);
+        evictCache(coupleId);
         return toVO(updated);
     }
 

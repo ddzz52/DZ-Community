@@ -1,6 +1,7 @@
 package com.dz.couple.module.user.service;
 
 import com.dz.couple.common.BusinessException;
+import com.dz.couple.common.CacheService;
 import com.dz.couple.common.ErrorCode;
 import com.dz.couple.module.couple.entity.Couple;
 import com.dz.couple.module.couple.mapper.CoupleMapper;
@@ -29,15 +30,17 @@ public class UserService {
     private final CoupleMapper coupleMapper;
     private final NotificationService notificationService;
     private final LoginRateLimitService rateLimitService;
+    private final CacheService cacheService;
 
     @Autowired
-    public UserService(UserMapper userMapper, PasswordUtil passwordUtil, JwtUtil jwtUtil, CoupleMapper coupleMapper, NotificationService notificationService, LoginRateLimitService rateLimitService) {
+    public UserService(UserMapper userMapper, PasswordUtil passwordUtil, JwtUtil jwtUtil, CoupleMapper coupleMapper, NotificationService notificationService, LoginRateLimitService rateLimitService, CacheService cacheService) {
         this.userMapper = userMapper;
         this.passwordUtil = passwordUtil;
         this.jwtUtil = jwtUtil;
         this.coupleMapper = coupleMapper;
         this.notificationService = notificationService;
         this.rateLimitService = rateLimitService;
+        this.cacheService = cacheService;
     }
 
     /**
@@ -75,9 +78,9 @@ public class UserService {
             isFirstMember = true;
         }
 
-        // 判断角色：空间第一人为 ADMIN，其余为 USER
-        long memberCount = userMapper.countByCoupleId(couple.getId());
-        String role = (memberCount == 0) ? "ADMIN" : "USER";
+        // 判断角色：仅系统第一个注册用户为全局 ADMIN，其余均为 USER
+        long totalUsers = userMapper.countAll();
+        String role = (totalUsers == 0) ? "ADMIN" : "USER";
 
         User user = new User();
         user.setCoupleId(couple.getId());
@@ -140,6 +143,10 @@ public class UserService {
         if (currentMemberCount <= 1) {
             coupleMapper.deleteById(currentCoupleId);
         }
+
+        // 清除旧空间和新空间的缓存（成员变更导致 profile/dashboard 数据失效）
+        evictCaches(currentCoupleId);
+        evictCaches(targetCouple.getId());
 
         // 刷新用户数据并返回
         User updated = userMapper.findById(userId);
@@ -217,6 +224,13 @@ public class UserService {
             throw new BusinessException(ErrorCode.NOT_FOUND, "用户不存在");
         }
         return toVO(user);
+    }
+
+    /** 清除指定 couple 的 Profile 和 Dashboard 缓存 */
+    private void evictCaches(Long coupleId) {
+        if (coupleId == null) return;
+        cacheService.deletePattern("cache:profile:" + coupleId + ":*");
+        cacheService.deletePattern("cache:dashboard:" + coupleId + ":*");
     }
 
     /**

@@ -1,6 +1,7 @@
 package com.dz.couple.module.admin.service;
 
 import com.dz.couple.common.BusinessException;
+import com.dz.couple.common.CacheService;
 import com.dz.couple.common.ErrorCode;
 import com.dz.couple.module.couple.mapper.CoupleMapper;
 import com.dz.couple.module.user.dto.UserVO;
@@ -22,13 +23,15 @@ public class AdminService {
     private final CoupleMapper coupleMapper;
     private final PasswordResetRequestMapper resetRequestMapper;
     private final PasswordUtil passwordUtil;
+    private final CacheService cacheService;
 
     @Autowired
-    public AdminService(UserMapper userMapper, CoupleMapper coupleMapper, PasswordResetRequestMapper resetRequestMapper, PasswordUtil passwordUtil) {
+    public AdminService(UserMapper userMapper, CoupleMapper coupleMapper, PasswordResetRequestMapper resetRequestMapper, PasswordUtil passwordUtil, CacheService cacheService) {
         this.userMapper = userMapper;
         this.coupleMapper = coupleMapper;
         this.resetRequestMapper = resetRequestMapper;
         this.passwordUtil = passwordUtil;
+        this.cacheService = cacheService;
     }
 
     /** 系统概览统计 */
@@ -61,9 +64,11 @@ public class AdminService {
         if (adminUserId.equals(targetUserId)) throw new BusinessException(ErrorCode.BAD_REQUEST, "不能删除自己");
         User target = userMapper.findById(targetUserId);
         if (target == null) throw new BusinessException(ErrorCode.NOT_FOUND, "用户不存在");
-        long memberCount = userMapper.countByCoupleId(target.getCoupleId());
+        Long targetCoupleId = target.getCoupleId();
+        long memberCount = userMapper.countByCoupleId(targetCoupleId);
         userMapper.deleteById(targetUserId);
-        if (memberCount <= 1) coupleMapper.deleteById(target.getCoupleId());
+        if (memberCount <= 1) coupleMapper.deleteById(targetCoupleId);
+        evictCaches(targetCoupleId);
     }
 
     /** 管理员修改用户角色 */
@@ -75,6 +80,7 @@ public class AdminService {
         User target = userMapper.findById(targetUserId);
         if (target == null) throw new BusinessException(ErrorCode.NOT_FOUND, "用户不存在");
         userMapper.updateRole(targetUserId, role);
+        evictCaches(target.getCoupleId());
         return toVO(userMapper.findById(targetUserId));
     }
 
@@ -90,6 +96,7 @@ public class AdminService {
         if (conflict != null && !conflict.getId().equals(targetUserId))
             throw new BusinessException(ErrorCode.CONFLICT, "该用户名已被占用");
         userMapper.updateUsername(targetUserId, newUsername.trim());
+        evictCaches(target.getCoupleId());
         return toVO(userMapper.findById(targetUserId));
     }
 
@@ -115,6 +122,8 @@ public class AdminService {
         req.setUsedFlag(0);
         resetRequestMapper.insert(req);
 
+        evictCaches(target.getCoupleId());
+
         Map<String, String> result = new LinkedHashMap<>();
         result.put("resetCode", code);
         result.put("username", target.getUsername());
@@ -125,6 +134,13 @@ public class AdminService {
         User user = userMapper.findById(userId);
         if (user == null || !"ADMIN".equals(user.getRole()))
             throw new BusinessException(ErrorCode.FORBIDDEN, "仅管理员可执行此操作");
+    }
+
+    /** 清除指定 couple 的 Profile 和 Dashboard 缓存，防止串号 */
+    private void evictCaches(Long coupleId) {
+        if (coupleId == null) return;
+        cacheService.deletePattern("cache:profile:" + coupleId + ":*");
+        cacheService.deletePattern("cache:dashboard:" + coupleId + ":*");
     }
 
     private UserVO toVO(User user) {
