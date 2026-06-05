@@ -84,7 +84,8 @@
   40%     { transform: scale(1.28); }
   70%     { transform: scale(0.94); }
 }
-.badge-pulse :deep(.el-badge__content) {
+/* Badge 脉冲 — 全局 CSS 不用 :deep() */
+.badge-pulse .el-badge__content {
   animation: badgePulse 420ms var(--e-bounce);
 }
 
