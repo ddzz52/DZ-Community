@@ -1,10 +1,11 @@
 <script setup>
-import { computed, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, reactive, ref, watch } from 'vue'
 import { ElMessage } from 'element-plus'
 import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useDashboardStore } from '../stores/dashboard'
 import { Calendar, ChatDotRound, Clock, Picture, RefreshRight, Star } from '@element-plus/icons-vue'
+import * as echarts from 'echarts'
 import http from '../api/http'
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
@@ -243,6 +244,13 @@ watch(
   }
 )
 
+watch(
+  () => [monthStats.value, yearStats.value],
+  () => {
+    updateCharts()
+  }
+)
+
 onMounted(async () => {
   if (!auth.user) await loadMe()
   await loadProfile()
@@ -251,18 +259,24 @@ onMounted(async () => {
   await loadAccountStats(true)
   await loadWishPending(true)
   window.addEventListener('dz_accounts_changed', onAccountsChanged)
+  window.addEventListener('resize', onResize)
   sigTickTimer = window.setInterval(() => {
     nowTick.value = Date.now()
   }, 30000)
+  nextTick(() => updateCharts())
 })
 
 onBeforeUnmount(() => {
   if (sigTickTimer) window.clearInterval(sigTickTimer)
   window.removeEventListener('dz_accounts_changed', onAccountsChanged)
+  window.removeEventListener('resize', onResize)
   if (acctSyncTimer) window.clearTimeout(acctSyncTimer)
   if (wheelTimer) window.clearTimeout(wheelTimer)
   if (wheelFxTimer) window.clearTimeout(wheelFxTimer)
   if (wheelPopTimer) window.clearTimeout(wheelPopTimer)
+  if (resizeTimer) window.clearTimeout(resizeTimer)
+  if (pieChart) { pieChart.dispose(); pieChart = null }
+  if (barChart) { barChart.dispose(); barChart = null }
 })
 
 const d = computed(() => dashboard.data || {})
@@ -432,40 +446,126 @@ const acctHint = computed(() => {
 })
 
 const pieWrapRef = ref(null)
-const pieHover = ref(null)
-const pieTip = reactive({ x: 0, y: 0 })
+const barWrapRef = ref(null)
+let pieChart = null
+let barChart = null
 
-const pieTipText = computed(() => {
-  const it = pieHover.value
-  if (!it) return null
-  const pct = Math.round((Number(it.pct || 0) || 0) * 100)
-  return {
-    name: String(it.category || '其他'),
-    amount: `¥${moneyText(it.amount)}`,
-    pct: `${pct}%`
-  }
-})
-
-const updatePieTip = (ev) => {
-  const el = pieWrapRef.value
-  if (!el || !ev) return
-  const rect = el.getBoundingClientRect()
-  const x = (ev.clientX || 0) - rect.left
-  const y = (ev.clientY || 0) - rect.top
-  pieTip.x = Math.max(8, Math.min(rect.width - 8, x))
-  pieTip.y = Math.max(8, Math.min(rect.height - 8, y))
+// ====== ECharts 饼图 ======
+const initPieChart = () => {
+  if (!pieWrapRef.value) return
+  if (!pieChart) pieChart = echarts.init(pieWrapRef.value)
+  const items = pieItems.value
+  if (!items.length) { pieChart.clear(); return }
+  pieChart.setOption({
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: 'rgba(255,255,255,0.96)',
+      borderColor: 'rgba(148,163,184,0.18)',
+      borderWidth: 1,
+      padding: [10, 14],
+      textStyle: { color: '#374151', fontSize: 13 },
+      formatter: (p) => `${p.marker} ${p.name}<br/>¥${moneyText(p.value)}（${p.percent}%）`
+    },
+    legend: { show: false },
+    graphic: [{
+      type: 'text',
+      left: 'center', top: '42%',
+      style: { text: '月总支出', fontSize: 11, fontWeight: 900, fill: 'rgba(17,24,39,0.5)', textAlign: 'center' }
+    }, {
+      type: 'text',
+      left: 'center', top: '52%',
+      style: { text: `¥${monthTotal.value}`, fontSize: 14, fontWeight: 950, fill: 'rgba(99,102,241,0.92)', textAlign: 'center' }
+    }],
+    series: [{
+      type: 'pie',
+      radius: ['52%', '78%'],
+      center: ['50%', '50%'],
+      avoidLabelOverlap: false,
+      itemStyle: { borderRadius: 6, borderColor: '#fff', borderWidth: 2 },
+      label: { show: false },
+      emphasis: {
+        scaleSize: 10,
+        label: { show: true, fontSize: 16, fontWeight: 'bold' }
+      },
+      animationType: 'scale',
+      animationEasing: 'elasticOut',
+      animationDuration: 800,
+      data: items.map((x) => ({
+        name: x.category,
+        value: x.amount,
+        itemStyle: { color: x.color }
+      }))
+    }]
+  }, true)
 }
 
-const onPieEnter = (it, ev) => {
-  pieHover.value = it || null
-  updatePieTip(ev)
+// ====== ECharts 柱状图 ======
+const initBarChart = () => {
+  if (!barWrapRef.value) return
+  if (!barChart) barChart = echarts.init(barWrapRef.value)
+  const items = barItems.value
+  if (!items.length) { barChart.clear(); return }
+  barChart.setOption({
+    tooltip: {
+      trigger: 'axis',
+      backgroundColor: 'rgba(255,255,255,0.96)',
+      borderColor: 'rgba(148,163,184,0.18)',
+      borderWidth: 1,
+      padding: [10, 14],
+      textStyle: { color: '#374151', fontSize: 13 },
+      formatter: (p) => `${p[0].axisValue}月<br/>${p[0].marker} ¥${moneyText(p[0].value)}`
+    },
+    grid: { left: 6, right: 12, top: 8, bottom: 22 },
+    xAxis: {
+      type: 'category',
+      data: items.map((x) => `${x.month}月`),
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { fontSize: 10, color: 'rgba(17,24,39,0.45)', fontWeight: 600 }
+    },
+    yAxis: {
+      type: 'value', show: false,
+      min: 0,
+      max: (v) => (v.max || 1) * 1.18
+    },
+    series: [{
+      type: 'bar',
+      data: items.map((x) => ({
+        value: x.amount,
+        itemStyle: {
+          borderRadius: [8, 8, 4, 4],
+          color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+            { offset: 0, color: 'rgba(99,102,241,0.88)' },
+            { offset: 1, color: 'rgba(139,92,246,0.82)' }
+          ])
+        }
+      })),
+      barWidth: '60%',
+      emphasis: {
+        itemStyle: { color: '#6366f1' }
+      },
+      animationDelay: (idx) => idx * 60,
+      animationEasing: 'elasticOut',
+      animationDuration: 700
+    }]
+  }, true)
 }
-const onPieMove = (ev) => {
-  if (!pieHover.value) return
-  updatePieTip(ev)
+
+const updateCharts = () => {
+  nextTick(() => {
+    initPieChart()
+    initBarChart()
+  })
 }
-const onPieLeave = () => {
-  pieHover.value = null
+
+// 窗口 resize 时重绘
+let resizeTimer = 0
+const onResize = () => {
+  if (resizeTimer) clearTimeout(resizeTimer)
+  resizeTimer = window.setTimeout(() => {
+    if (pieChart) pieChart.resize()
+    if (barChart) barChart.resize()
+  }, 200)
 }
 
 const normalizeCategory = (s) => String(s || '').trim()
@@ -506,24 +606,6 @@ const pieItems = computed(() => {
   return merged.map((x, idx) => {
     const pct = total > 0 ? x.amount / total : 0
     return { ...x, pct, color: categoryColor(x.category) }
-  })
-})
-
-const pieSegs = computed(() => {
-  const items = pieItems.value
-  const totalPct = items.reduce((s, x) => s + x.pct, 0)
-  if (!items.length || totalPct <= 0) return []
-  const norm = totalPct > 1 ? 1 / totalPct : 1
-  const c = 2 * Math.PI * 46
-  let acc = 0
-  return items.map((it) => {
-    const p = Math.max(0, Math.min(1, it.pct * norm))
-    const dash = Number((p * c).toFixed(3))
-    const gap = Number((c - dash).toFixed(3))
-    const dashoffset = Number((-acc).toFixed(3))
-    const seg = { ...it, dash, gap, dashoffset, dasharray: `${dash} ${gap}` }
-    acc += dash
-    return seg
   })
 })
 
@@ -636,45 +718,10 @@ const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
             <div class="chart">
               <div class="chart-title">分类消费占比</div>
               <div v-if="!pieItems.length" class="chart-empty app-muted">本月还没有记账</div>
-              <div v-else class="pie">
-                <div ref="pieWrapRef" class="pie-wrap" @mousemove="onPieMove" @mouseleave="onPieLeave">
-                <svg class="pie-svg" viewBox="0 0 120 120" role="img" aria-label="分类消费占比饼图">
-                  <circle cx="60" cy="60" r="46" fill="none" stroke="rgba(17,24,39,0.06)" stroke-width="8" />
-                  <g transform="rotate(-90 60 60)">
-                    <circle
-                      v-for="s in pieSegs"
-                      :key="s.category"
-                      cx="60" cy="60" r="46"
-                      fill="none" :stroke="s.color" stroke-width="8" stroke-linecap="round"
-                      :stroke-dasharray="s.dasharray" :stroke-dashoffset="s.dashoffset"
-                      class="pie-seg" :class="{ active: pieHover?.category === s.category }"
-                      @mouseenter="(e) => onPieEnter(s, e)"
-                    >
-                      <title>{{ `${s.category}：¥${moneyText(s.amount)}（${Math.round(s.pct * 100)}%）` }}</title>
-                    </circle>
-                  </g>
-                  <circle cx="60" cy="60" r="38" fill="rgba(255,255,255,0.96)" />
-                  <text x="60" y="58" text-anchor="middle" class="pie-center-k">总消费</text>
-                  <text x="60" y="78" text-anchor="middle" class="pie-center-v">¥{{ monthTotal }}</text>
-                </svg>
-                <div v-if="pieHover" class="pie-tip" :style="{ left: pieTip.x + 'px', top: pieTip.y + 'px' }">
-                  <span class="pie-tip-dot" :style="{ background: pieHover.color }" />
-                  <div class="pie-tip-main">
-                    <div class="pie-tip-name">{{ pieTipText?.name }}</div>
-                    <div class="pie-tip-sub">
-                      <span class="pie-tip-amt">{{ pieTipText?.amount }}</span>
-                      <span class="pie-tip-pct">{{ pieTipText?.pct }}</span>
-                    </div>
-                  </div>
-                </div>
-                </div>
+              <div v-else class="pie-echarts">
+                <div ref="pieWrapRef" class="echart-box" />
                 <div class="pie-leg">
-                  <div
-                    v-for="it in pieItems" :key="it.category"
-                    class="leg" :class="{ active: pieHover?.category === it.category }"
-                    :title="`${it.category}：¥${moneyText(it.amount)}（${Math.round(it.pct * 100)}%）`"
-                    @mouseenter="(e) => onPieEnter(it, e)" @mouseleave="onPieLeave"
-                  >
+                  <div v-for="it in pieItems" :key="it.category" class="leg">
                     <span class="dot" :style="{ background: it.color }" />
                     <div class="leg-main">
                       <div class="leg-name" :style="{ color: it.color }">{{ it.category }}</div>
@@ -693,12 +740,7 @@ const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
                 </el-tooltip>
               </div>
               <div v-if="!barItems.some((x) => x.amount > 0)" class="chart-empty app-muted">今年还没有记账</div>
-              <div v-else class="bars">
-                <div v-for="b in barItems" :key="b.month" class="barcol" :title="`${acctYear}年${b.month}月：¥${moneyText(b.amount)}`">
-                  <div class="bar" :style="{ height: `${Math.round(b.ratio * 100)}%` }" />
-                  <div class="barx app-muted">{{ b.month }}</div>
-                </div>
-              </div>
+              <div v-else class="echart-box" ref="barWrapRef" />
             </div>
           </div>
         </div>
@@ -768,7 +810,7 @@ const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
         <div class="acts">
           <div v-if="!activities.length" class="empty app-muted">暂无动态</div>
           <div v-else class="actlist">
-            <div v-for="a in activities" :key="a.key" class="act">
+            <div v-for="(a, i) in activities" :key="a.key" class="act stagger-item" :style="{ animationDelay: `${i * 60}ms` }">
               <div class="dot" :class="a.tone" />
               <div class="act-main">
                 <div class="act-title">{{ a.title }}</div>
@@ -1437,99 +1479,17 @@ const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
   text-align: center;
   font-size: 12px;
 }
-.pie {
+/* ====== ECharts 图表容器 ====== */
+.pie-echarts {
   display: grid;
-  grid-template-columns: 140px 1fr;
-  gap: 12px;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
   align-items: center;
-  padding-top: 10px;
+  padding-top: 6px;
 }
-.pie-wrap {
-  position: relative;
-  width: 140px;
-  height: 140px;
-  display: grid;
-  place-items: center;
-}
-.pie-svg {
-  width: 140px;
-  height: 140px;
-  display: block;
-  border-radius: 16px;
-}
-.pie-svg circle {
-  pointer-events: stroke;
-}
-.pie-seg {
-  transform-origin: 60px 60px;
-  transform-box: fill-box;
-  transition: transform 0.18s ease, filter 0.18s ease, opacity 0.18s ease;
-}
-.pie-seg.active {
-  transform: scale(1.045);
-  filter: drop-shadow(0 10px 16px rgba(139, 92, 246, 0.18)) drop-shadow(0 8px 18px rgba(139, 92, 246, 0.22));
-}
-.pie-svg g:hover .pie-seg:not(.active) {
-  opacity: 0.92;
-}
-.pie-tip {
-  position: absolute;
-  transform: translate(10px, -10px);
-  background: rgba(255, 255, 255, 0.96);
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  box-shadow: 0 18px 46px rgba(15, 23, 42, 0.12);
-  backdrop-filter: blur(12px);
-  border-radius: 14px;
-  padding: 10px 12px;
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  pointer-events: none;
-  white-space: nowrap;
-  max-width: 220px;
-}
-.pie-tip-dot {
-  width: 10px;
-  height: 10px;
-  border-radius: 999px;
-  flex: 0 0 auto;
-}
-.pie-tip-main {
-  min-width: 0;
-  display: grid;
-  gap: 4px;
-}
-.pie-tip-name {
-  font-size: 12px;
-  font-weight: 950;
-  color: rgba(17, 24, 39, 0.86);
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.pie-tip-sub {
-  display: inline-flex;
-  gap: 10px;
-  align-items: baseline;
-}
-.pie-tip-amt {
-  font-size: 12px;
-  font-weight: 900;
-  color: rgba(17, 24, 39, 0.72);
-}
-.pie-tip-pct {
-  font-size: 12px;
-  font-weight: 950;
-  color: rgba(99, 102, 241, 0.85);
-}
-.pie-center-k {
-  font-size: 11px;
-  font-weight: 900;
-  fill: rgba(17, 24, 39, 0.52);
-}
-.pie-center-v {
-  font-size: 13px;
-  font-weight: 950;
-  fill: rgba(99, 102, 241, 0.92);
+.echart-box {
+  width: 100%;
+  height: 180px;
 }
 .pie-leg {
   display: flex;
@@ -1580,42 +1540,6 @@ const monthOptions = Array.from({ length: 12 }, (_, i) => i + 1)
   font-size: 12px;
   font-weight: 950;
   letter-spacing: 0.2px;
-}
-.bars {
-  height: 140px;
-  margin-top: 10px;
-  display: grid;
-  grid-template-columns: repeat(12, 1fr);
-  gap: 6px;
-  align-items: end;
-}
-.barcol {
-  height: 100%;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  gap: 6px;
-  cursor: default;
-}
-.bar {
-  width: 100%;
-  min-height: 2px;
-  border-radius: 10px 10px 6px 6px;
-  background: linear-gradient(180deg, rgba(99, 102, 241, 0.86), rgba(139, 92, 246, 0.82));
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  box-shadow: 0 14px 30px rgba(15, 23, 42, 0.06);
-  transition: transform 0.16s ease, filter 0.16s ease, box-shadow 0.16s ease;
-}
-.barx {
-  font-size: 11px;
-  text-align: center;
-}
-@media (hover: hover) {
-  .barcol:hover .bar {
-    transform: translateY(-1px);
-    filter: brightness(1.05);
-    box-shadow: 0 18px 38px rgba(99, 102, 241, 0.12);
-  }
 }
 .acts {
   min-height: 260px;
