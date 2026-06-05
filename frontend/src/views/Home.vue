@@ -5,8 +5,17 @@ import { useRouter } from 'vue-router'
 import { useAuthStore } from '../stores/auth'
 import { useDashboardStore } from '../stores/dashboard'
 import { Calendar, ChatDotRound, Clock, Picture, RefreshRight, Star } from '@element-plus/icons-vue'
-import * as echarts from 'echarts'
 import http from '../api/http'
+
+// ECharts 懒加载 — 减小首屏体积约 800KB
+let _echarts = null
+const loadEcharts = async () => {
+  if (!_echarts) {
+    const mod = await import('echarts')
+    _echarts = mod
+  }
+  return _echarts
+}
 
 const apiBase = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '')
 const assetUrl = (u) => {
@@ -450,9 +459,10 @@ const barWrapRef = ref(null)
 let pieChart = null
 let barChart = null
 
-// ====== ECharts 饼图 ======
-const initPieChart = () => {
-  if (!pieWrapRef.value) return
+// ====== ECharts 饼图（懒加载 + 防抖） ======
+let chartDebounce = 0
+const initPieChart = async (echarts) => {
+  if (!pieWrapRef.value || !document.contains(pieWrapRef.value)) return
   if (!pieChart) pieChart = echarts.init(pieWrapRef.value)
   const items = pieItems.value
   if (!items.length) { pieChart.clear(); return }
@@ -499,9 +509,9 @@ const initPieChart = () => {
   }, true)
 }
 
-// ====== ECharts 柱状图 ======
-const initBarChart = () => {
-  if (!barWrapRef.value) return
+// ====== ECharts 柱状图（懒加载） ======
+const initBarChart = async (echarts) => {
+  if (!barWrapRef.value || !document.contains(barWrapRef.value)) return
   if (!barChart) barChart = echarts.init(barWrapRef.value)
   const items = barItems.value
   if (!items.length) { barChart.clear(); return }
@@ -552,10 +562,14 @@ const initBarChart = () => {
 }
 
 const updateCharts = () => {
-  nextTick(() => {
-    initPieChart()
-    initBarChart()
-  })
+  if (chartDebounce) clearTimeout(chartDebounce)
+  chartDebounce = window.setTimeout(async () => {
+    const echarts = await loadEcharts()
+    nextTick(() => {
+      initPieChart(echarts)
+      initBarChart(echarts)
+    })
+  }, 150) // 150ms 防抖，避免快速重复初始化
 }
 
 // 窗口 resize 时重绘

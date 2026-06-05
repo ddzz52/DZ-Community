@@ -338,7 +338,7 @@ onUnmounted(() => {
     <main class="layout-content">
       <div class="app-max">
         <router-view v-slot="{ Component }">
-          <transition name="page" mode="out-in">
+          <transition name="page">
             <component :is="Component" />
           </transition>
         </router-view>
@@ -544,19 +544,15 @@ onUnmounted(() => {
   border: none;
 }
 
-/* ====== 页面过渡 ====== */
+/* ====== 页面过渡（轻量，不阻塞） ====== */
 .page-enter-active {
-  animation: pageIn var(--e-slow) both;
+  transition: opacity 180ms ease;
 }
 .page-leave-active {
-  animation: pageOut 180ms cubic-bezier(0.4,0,0.2,1) both;
+  transition: opacity 120ms ease;
 }
-@keyframes pageIn {
-  0%   { opacity: 0; transform: translateY(8px) scale(0.985); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
-@keyframes pageOut {
-  0%   { opacity: 1; transform: translateY(0) scale(1); }
-  100% { opacity: 0; transform: translateY(-6px) scale(0.99); }
+.page-enter-from,
+.page-leave-to {
+  opacity: 0;
 }
 </style>
