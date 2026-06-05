@@ -16,3 +16,9 @@ app.use(createPinia())
 app.use(router)
 app.use(ElementPlus)
 app.mount('#app')
+
+// ====== PWA Service Worker（仅生产环境注册） ======
+// 删除此行即可回退 PWA 功能
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
+  navigator.serviceWorker.register('/sw.js').catch(() => {})
+}

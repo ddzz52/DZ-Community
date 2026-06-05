@@ -1,0 +1,19 @@
+{
+  "name": "DZ-Community",
+  "short_name": "DZ",
+  "description": "情侣专属空间 — 记录两人的每一刻",
+  "start_url": "/app/home",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "theme_color": "#4f46e5",
+  "background_color": "#ffffff",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
